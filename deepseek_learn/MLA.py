@@ -4,20 +4,12 @@ import torch.nn.functional as F
 import math
 
 
-<<<<<<< HEAD
 # rms归一化  均根方归一化 去除均值先验分布信息，增强模型迁移能力
-=======
-# rms归一化
->>>>>>> refs/remotes/origin/main
 class RMSNorm(nn.Module):
     def __init__(self, hidden_size, eps=1e-6):
 
         super().__init__()
-<<<<<<< HEAD
         self.weight = nn.Parameter(torch.ones(hidden_size))  # 可学习的参数
-=======
-        self.weight = nn.Parameter(torch.ones(hidden_size))  # 可学习的参数,参数sigma
->>>>>>> refs/remotes/origin/main
         self.variance_epsilon = eps
 
     def forward(self, hidden_states):
@@ -27,7 +19,6 @@ class RMSNorm(nn.Module):
         )  # 所有值取平方，再得到最后维度均值
         hidden_states = hidden_states * torch.rsqrt(
             variance + self.variance_epsilon
-<<<<<<< HEAD
         )  # 乘variance的平方根倒数
         return self.weight * hidden_states.float()
 
@@ -35,15 +26,6 @@ class RMSNorm(nn.Module):
 def rotate_half(x):
     x1, x2 = x.chunk(2, dim=-1)
     return torch.cat((-x2, x1), dim=-1)
-=======
-        )  #  取平方根倒数
-        return self.weight * hidden_states.float()  # 最后一层归一
-
-
-def rotate_half(x):
-    x1, x2 = x.chunk(2, dim=-1)  # 最后一层相间隔分块
-    return torch.cat((-x2, x1), dim=-1)  # 取反合并
->>>>>>> refs/remotes/origin/main
 
 
 def apply_rotate_pos_emb(q, k, cos, sin, unsqueeze_dim=2):
@@ -57,11 +39,7 @@ def apply_rotate_pos_emb(q, k, cos, sin, unsqueeze_dim=2):
     return q_embed, k_embed
 
 
-<<<<<<< HEAD
 # 旋转位置编码
-=======
-# 旋转位置编码，最大序列长度为max_seq_len,返回q、k的旋转位置编码
->>>>>>> refs/remotes/origin/main
 class RotaryEmbedding(nn.Module):
     def __init__(self, dim, max_seq_len=1024):
         super(RotaryEmbedding, self).__init__()
@@ -70,10 +48,7 @@ class RotaryEmbedding(nn.Module):
         inv_freq = 1.0 / (10000 ** (torch.arange(0, dim, 2).float() / dim))
         t = torch.arange(max_seq_len).float().unsqueeze(1)
         freqs = t @ inv_freq.unsqueeze(0)
-<<<<<<< HEAD
         # 并不是直接拼接，而是按间隔拼接，形状还是dim
-=======
->>>>>>> refs/remotes/origin/main
         freqs = torch.cat((freqs, freqs), dim=-1)
 
         self.register_buffer("cos_cached", freqs.cos())
@@ -144,11 +119,7 @@ class MLA(nn.Module):
                     self.n_heads,
                     self.qk_head_dim,
                 ),
-<<<<<<< HEAD
                 persistent=False,  # 不会优化参数
-=======
-                persistent=False,
->>>>>>> refs/remotes/origin/main
             )
             self.register_buffer(
                 'v_cache',
