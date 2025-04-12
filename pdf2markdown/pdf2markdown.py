@@ -385,20 +385,24 @@ def parse_pdf(
     return content, all_rect_images
 
 
-<<<<<<< HEAD
+
 path = os.path.dirname(os.path.abspath(__file__))
 
 result = parse_pdf(
     pdf_path='/data0/Documents/llm_related/pdf2markdown/Meper常用功能界面介绍.pdf',
     output_dir=path + '/output',
-=======
 result = parse_pdf(
     pdf_path='/data0/Documents/llm_related/pdf2markdown/test.pdf.pdf',
     output_dir="./output",
->>>>>>> refs/remotes/origin/main
     api_key="8ca11906-427f-40de-b326-cc9c7fcb9913",
     base_url="https://ark.cn-beijing.volces.com/api/v3/",
     model="doubao-1.5-vision-pro-32k-250115",
     verbose=True,
     gpt_worker=5,
+)
+result = parse_pdf(
+    pdf_path='/home/user/wyf/test.pdf',
+    output_dir="./output",
+    verbose=True,
+    gpt_worker=1
 )
