@@ -1,0 +1,15 @@
+base_url = 'https://api.siliconflow.cn/v1/'
+
+api_key = 'sk-qshjfdyffweylatywjoktaxdtgjfcxmpubdkcxttwkmwlfyi'
+
+model = 'Qwen/QwQ-32B'
+
+
+base_url = 'https://ark.cn-beijing.volces.com/api/v3/'
+
+api_key = '8ca11906-427f-40de-b326-cc9c7fcb9913'
+
+model = 'doubao-1.5-vision-pro-32k-250115'
+model = 'doubao-vision-pro-32k-241028'
+model = 'doubao-1.5-pro-32k-250115'
+model = 'deepseek-r1-250120'
