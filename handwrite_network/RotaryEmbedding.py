@@ -9,6 +9,7 @@ def rotate_half(x):
 
 
 def apply_rotate_pos_emb(q, k, cos, sin, unsqueeze_dim=2):
+    '''2 dim is heads number [bs, seq_len, n_head, dim]'''
     cos = cos.unsqueeze(unsqueeze_dim)
     sin = sin.unsqueeze(unsqueeze_dim)
 
