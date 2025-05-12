@@ -21,6 +21,11 @@ class MLA(nn.Module):
         max_batch_size,
         mode,
     ):
+        '''
+        NOPE：No Positional Embedding
+
+        ROPE：Rotary Positional Embedding
+        '''
         super(MLA).__init__()
         self.dim = dim  # 隐藏层纬度  4096 / n_heads
         self.n_heads = n_heads  # 注意力机制头数
@@ -119,7 +124,7 @@ class MLA(nn.Module):
             kv = self.kv_norm(kv)  # [bs, seq_len, kv_lora_rank]
             kv = self.wkv_b(
                 kv
-            )  # [bs, seq_len, n_heads, n_heads * (qk_nope_head_dim + v_head_dim)]
+            )  # [bs, seq_len, n_heads * (qk_nope_head_dim + v_head_dim)]
             kb = kv.view(
                 bs, seq_len, self.n_heads, self.qk_nope_head_dim + self.v_head_dim
             )  # [bs, seq_len, n_heads, qk_nope_head_dim + v_head_dim]
@@ -154,10 +159,18 @@ class MLA(nn.Module):
             scores = scores.transpose(1, 2)
         else:
             '''register kv_loara_rank and pe_cache'''
-            k_pe = k_pe.unsqueeze(2)
+            k_pe = k_pe.unsqueeze(2)  # [bs, seq_len, 1, 1, qk_rope_head_dim]
             wkv_b = (
                 self.wkv_b.weight
             )  # [n_heads * (qk_nope_dim + v_head_dim), kv_lora_rank] type: torch.nn.Parameter
             wkv_b = wkv_b.view(
                 self.n_heads, -1, self.kv_lora_rank
             )  # [n_heads, qk_nope_dim + v_head_dim, kv_lora_rank]  note: view中的-1表示自动计算维度
+
+            # q 直接点乘 kv的秩，相当于 q * ci, dim_c = kv_lora_rank
+            q_nope = torch.einsum(
+                "bshd, hdc-> bshc", q_nope, wkv_b[:, : self.qk_nope_head_dim]
+            )  # q_nope shape:[bs, seq_len, n_heads, kv_lora_rank]
+
+            # q * K(T) = x * wq * ( c * wkv_b[ : , :self.qk_nope_head_dim])(T))
+            #          = x * wq * wkv_b[:, :self.qk_nope_head_dim](T) * c(T)
