@@ -5,15 +5,20 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "argparse>=1.4.0",
+    "diffusers>=0.35.2",
     "einops>=0.8.1",
     "funasr>=1.2.7",
     "gradio>=5.23.1",
     "inflect>=7.5.0",
+    "invisible-watermark>=0.2.0",
     "pydantic>=2.12.3",
+    "pytorch-lightning>=2.5.5",
     "soundfile>=0.13.1",
     "spaces>=0.42.1",
     "torch>=2.9.0",
     "torchaudio>=2.9.0",
+    "torchvision>=0.24.0",
     "transformers>=4.57.1",
     "wetext>=0.1.0",
 ]
