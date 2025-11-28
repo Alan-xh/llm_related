@@ -10,8 +10,8 @@ import torch
 import torch.onnx
 from onnx import load_model, save_model
 from onnxmltools.utils import convert_float_to_float16
-import cn_clip.clip as clip
-from clip.utils import _MODELS, _MODEL_INFO, _download, available_models, create_model, image_transform
+from .. import tokenize
+from ..utils import _MODELS, _MODEL_INFO, _download, available_models, create_model, image_transform
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     resolution = _MODEL_INFO[args.model_arch]['input_resolution']
     preprocess = image_transform(resolution)
     image = preprocess(Image.new('RGB', (resolution, resolution))).unsqueeze(0)
-    text = clip.tokenize([""], context_length=args.context_length)
+    text = tokenize([""], context_length=args.context_length)
 
     # perform conversions, ONNX text and vision encoders will be saved into separated files
     if args.convert_text:

@@ -13,9 +13,13 @@ from .model import convert_weights, CLIP, restore_model
 
 __all__ = ["load", "tokenize", "available_models", "image_transform", "load_from_name"]
 
+
+''' 模型发布组织名 '''
 _MODELSCOPE_ORG = "AI-ModelScope"
 _HUGGINGFACE_ORG = "OFA-Sys"
 
+
+''' 模型字典 {key: (name, filename)}'''
 _MODELS = {
     "ViT-B-16": ("chinese-clip-vit-base-patch16", "clip_cn_vit-b-16.pt"),
     "ViT-L-14": ("chinese-clip-vit-large-patch14", "clip_cn_vit-l-14.pt"),
@@ -24,6 +28,7 @@ _MODELS = {
     "RN50": ("chinese-clip-rn50", "clip_cn_rn50.pt"),
 }
 
+''' 模型信息字典 {key: {名称[vision@text]， 分辨率}}'''
 _MODEL_INFO = {
     "ViT-B-16": {
         "struct": "ViT-B-16@RoBERTa-wwm-ext-base-chinese",
@@ -49,6 +54,17 @@ _MODEL_INFO = {
 
 
 def _download(modelname: str, root: str, use_modelscope: bool = False):
+    ''' 
+    检查并下载模型文件
+    
+    参数:
+        modelname: 模型名称
+        root: 下载路径
+        use_modelscope: 是否使用 modelscope 下载
+
+    返回:
+        模型文件路径
+    '''
     os.makedirs(root, exist_ok=True)
 
     # this a private function and the only caller has checked the model exsits
@@ -105,6 +121,22 @@ def available_models() -> List[str]:
 
 def load_from_name(name: str, device: Union[str, torch.device] = "cuda" if torch.cuda.is_available() else "cpu",
                    download_root: str = None, vision_model_name: str = None, text_model_name: str = None, input_resolution: int = None, use_modelscope: bool = False):
+    
+    '''
+    根据名称加载模型
+
+    参数:
+        name: 模型名称
+        device: 驱动
+        download_root: 下载路径
+        vision_model_name: 视觉模型
+        text_model_name: 文本模型
+        input_resolution: 模型输入分辨率
+        use_modelscope: 是否使用 modelscope
+    
+    返回:
+        模型实例， 图片转换器
+    '''
     if name in _MODELS:
         model_path = _download(name, download_root or os.path.expanduser("~/.cache/clip"), use_modelscope)
         model_name, model_input_resolution = _MODEL_INFO[name]['struct'], _MODEL_INFO[name]['input_resolution']
@@ -115,13 +147,11 @@ def load_from_name(name: str, device: Union[str, torch.device] = "cuda" if torch
     else:
         raise RuntimeError(f"Model {name} not found; available models = {available_models()}")
 
-    with open(model_path, 'rb') as opened_file:
-        # loading saved checkpoint
-        checkpoint = torch.load(opened_file, map_location="cpu")
+    checkpoint = torch.load(model_path, map_location="cpu")
 
     model = create_model(model_name, checkpoint)
     if str(device) == "cpu":
-        model.float()
+        model.float()  # 转成 torch.float32
     else:
         model.to(device)
     return model, image_transform(model_input_resolution)
@@ -187,6 +217,12 @@ def image_transform(image_size=224):
 
 
 def create_model(model_name, checkpoint=None):
+    '''
+    根据模型名读取配置文件，实例化 CLIP 模型
+    
+    model_name: 模型名称
+
+    '''
     vision_model, text_model = model_name.split('@')
     # Initialize the model.
     vision_model_config_file = Path(

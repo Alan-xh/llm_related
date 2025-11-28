@@ -20,7 +20,29 @@ from .configuration_bert import BertConfig
 from .modeling_bert import BertModel
 
 
+'''
+神经网络中常见的四维张量
+
+| 字母    | 全称               | 代表含义                             |
+| ----- | ---------------- | -------------------------------- |
+| **N** | Batch **N**umber | **批量大小**，一次输入多少张图片               |
+| **C** | **C**hannel      | **通道数**，例如 RGB=3 通道，或卷积层后特征图的通道数 |
+| **H** | **H**eight       | **图像高度**（特征图高度）                  |
+| **W** | **W**idth        | **图像宽度**（特征图宽度）                  |
+
+N = batch size（批量句子数）
+
+L = sequence length（序列长度，例如句子 token 数）
+
+D = embedding dimension（词向量/隐藏层维度）
+'''
+
 class Bottleneck(nn.Module):
+    '''
+    扩大 expansion 的 cnn 层
+
+    x -> conv1 -> bn1 -> conv2 -> bn2 -> conv3 -> bn3 + x -> relu 
+    '''
     expansion = 4 # 扩张倍数
 
     def __init__(self, inplanes, planes, stride=1):
@@ -74,15 +96,16 @@ class Bottleneck(nn.Module):
 class AttentionPool2d(nn.Module):
     def __init__(self, spacial_dim: int, embed_dim: int, num_heads: int, output_dim: int = None):
         '''
+        projection（投影 / 线性映射）
 
-
-        spacial_dim: 特定维度
+        spacial_dim: 指定维度
         embed_dim: 嵌入维度
         num_heads: 注意力头数
         output_dim: 输出维度
         '''
         super().__init__()
-        self.positional_embedding = nn.Parameter(torch.randn(spacial_dim ** 2 + 1, embed_dim) / embed_dim ** 0.5) # nn.Parameter() 将张量注册成模型参数，有梯度，可以使用优化器根据梯度更新参数(optim.Adam 或 optim.SGD),可以通过 model.parameters() 访问
+        # nn.Parameter() 将张量注册成模型参数，有梯度，可以使用优化器根据梯度更新参数(optim.Adam 或 optim.SGD),可以通过 model.parameters() 访问
+        self.positional_embedding = nn.Parameter(torch.randn(spacial_dim ** 2 + 1, embed_dim) / embed_dim ** 0.5)  # (L**2 + 1, D) / sqrt(D)
         self.k_proj = nn.Linear(embed_dim, embed_dim)
         self.q_proj = nn.Linear(embed_dim, embed_dim)
         self.v_proj = nn.Linear(embed_dim, embed_dim)
@@ -92,27 +115,28 @@ class AttentionPool2d(nn.Module):
     def forward(self, x):
         x = x.reshape(x.shape[0], x.shape[1], x.shape[2] * x.shape[3]).permute(2, 0, 1)  # NCHW -> (HW)NC ; permute() 根据 *dim 转置
         x = torch.cat([x.mean(dim=0, keepdim=True), x], dim=0)  # (HW+1)NC; 0 维添加一个平均值
-        x = x + self.positional_embedding[:, None, :].to(x.dtype)  # (HW+1)NC; 添加位置编码
+        x = x + self.positional_embedding[:, None, :].to(x.dtype)  # (HW+1)NC; 添加位置编码, [:, None, :]显性扩展至 3 维
+
         '''
         F.multi_head_attention_forward()
-        英文参数名,中文翻译,描述
-        "query, key, value",查询、键、值,用于计算注意力机制的输入张量。遵循“Attention Is All You Need”论文中的定义。
-        embed_dim_to_check,检查的嵌入维度,模型的总维度 (E)。
-        num_heads,头数量,并行的注意力头数量。
-        "in_proj_weight, in_proj_bias",输入投影权重、偏置,用于将 Q、K、V 同时投影的权重和偏置。仅在 use_separate_proj_weight 为 False 时使用。
-        "bias_k, bias_v",键、值序列偏置,将添加到 Key 和 Value 序列的额外偏置 (在维度0添加)。
-        add_zero_attn,添加零注意力,是否在 Key 和 Value 序列的维度1添加一批零张量。
-        dropout_p,Dropout 概率,元素被置零的概率。
-        "out_proj_weight, out_proj_bias",输出投影权重、偏置,用于将多头注意力结果投影回原始维度的权重和偏置。
-        training,训练状态,如果为 True，则应用 Dropout。
-        key_padding_mask,键填充掩码,如果提供，将忽略 Key 中指定的填充元素。当值为 True 时，对应的注意力值将被填充为 −∞。可以是布尔型或浮点型张量。
+        
+        "query, key, value",查询、键、值,用于计算注意力机制的输入张量。遵循“Attention Is All You Need”论文中的定义
+        embed_dim_to_check,检查的嵌入维度,模型的总维度 (E)
+        num_heads,头数量,并行的注意力头数量
+        "in_proj_weight, in_proj_bias",输入投影权重、偏置,用于将 Q、K、V 同时投影的权重和偏置。仅在 use_separate_proj_weight 为 False 时使用
+        "bias_k, bias_v",键、值序列偏置,将添加到 Key 和 Value 序列的额外偏置 (在维度0添加)
+        add_zero_attn,添加零注意力,是否在 Key 和 Value 序列的维度1添加一批零张量
+        dropout_p,Dropout 概率,元素被置零的概率
+        "out_proj_weight, out_proj_bias",输出投影权重、偏置,用于将多头注意力结果投影回原始维度的权重和偏置
+        training,训练状态,如果为 True，则应用 Dropout
+        key_padding_mask,键填充掩码,如果提供，将忽略 Key 中指定的填充元素。当值为 True 时，对应的注意力值将被填充为 −∞。可以是布尔型或浮点型张量
         need_weights,需要权重,是否返回注意力输出权重。默认为 True。注意：为获得最佳性能，在不需要注意力权重时应设为 False。
         attn_mask,注意力掩码,2D 或 3D 掩码，用于阻止对某些位置的关注。2D 掩码 ( L×S) 广播到所有批次，3D 掩码 ( N×num_heads×L×S) 可为每个批次指定不同的掩码。
         use_separate_proj_weight,使用单独投影权重,"函数是否接受查询、键和值的单独投影权重 (q_proj_weight, k_proj_weight, v_proj_weight)。如果为 False，则使用组合的 in_proj_weight。"
-        "q_proj_weight, k_proj_weight, v_proj_weight",Q、K、V 投影权重,如果 use_separate_proj_weight 为 True，则使用这些单独的投影权重。
-        "static_k, static_v",静态键、静态值,用于注意力操作的静态键和值张量。
-        average_attn_weights,平均注意力权重,如果为 True (且 need_weights=True)，返回的注意力权重将在所有注意力头之间取平均。否则，返回每个头的权重。
-        is_causal,是否因果,如果指定，应用因果掩码作为注意力掩码，并忽略 attn_mask 来计算缩放点积注意力。
+        "q_proj_weight, k_proj_weight, v_proj_weight",Q、K、V 投影权重,如果 use_separate_proj_weight 为 True，则使用这些单独的投影权重
+        "static_k, static_v",静态键、静态值,用于注意力操作的静态键和值张量
+        average_attn_weights,平均注意力权重,如果为 True (且 need_weights=True)，返回的注意力权重将在所有注意力头之间取平均。否则，返回每个头的权重
+        is_causal,是否因果,如果指定，应用因果掩码作为注意力掩码，并忽略 attn_mask 来计算缩放点积注意力
         '''
         x, _ = F.multi_head_attention_forward(
             query=x, key=x, value=x,
@@ -149,22 +173,29 @@ class ModifiedResNet(nn.Module):
     """
 
     def __init__(self, layers, output_dim, heads, input_resolution=224, width=64):
+        '''
+        layers: List[int]， 每个 layer 的 Bottleneck 层数
+        output_dim: 输出维度
+        heads: 注意力头数
+        input_resolution: 输入分辨率
+        width: 输出通道数
+        '''
         super().__init__()
         self.output_dim = output_dim
         self.input_resolution = input_resolution
 
-        # the 3-layer stem
+        # the 3-layer stem(Stem Block, Stem Layer 输入处理模块)[ 3 -> width]
         self.conv1 = nn.Conv2d(3, width // 2, kernel_size=3, stride=2, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(width // 2)
         self.conv2 = nn.Conv2d(width // 2, width // 2, kernel_size=3, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(width // 2)
         self.conv3 = nn.Conv2d(width // 2, width, kernel_size=3, padding=1, bias=False)
         self.bn3 = nn.BatchNorm2d(width)
-        self.avgpool = nn.AvgPool2d(2)
+        self.avgpool = nn.AvgPool2d(kernel_size=2)
         self.relu = nn.ReLU(inplace=True)
 
         # residual layers
-        self._inplanes = width  # this is a *mutable* variable used during construction
+        self._inplanes = width  # 这是一个在构造过程中使用的*可变*变量。
         self.layer1 = self._make_layer(width, layers[0])
         self.layer2 = self._make_layer(width * 2, layers[1], stride=2)
         self.layer3 = self._make_layer(width * 4, layers[2], stride=2)
@@ -174,6 +205,13 @@ class ModifiedResNet(nn.Module):
         self.attnpool = AttentionPool2d(input_resolution // 32, embed_dim, heads, output_dim)
 
     def _make_layer(self, planes, blocks, stride=1):
+        '''
+        planes 输出通道
+        blocks 块数
+        stride 间隔
+
+        return: blocks + 1 个块
+        '''
         layers = [Bottleneck(self._inplanes, planes, stride)]
 
         self._inplanes = planes * Bottleneck.expansion
@@ -206,7 +244,7 @@ class ModifiedResNet(nn.Module):
 
 
 class LayerNorm(nn.LayerNorm):
-    """Subclass torch's LayerNorm to handle fp16."""
+    """Subclass torch's LayerNorm to handle fp16.  不改变数据类型的归一化"""
 
     def forward(self, x: torch.Tensor):
         orig_type = x.dtype
@@ -215,29 +253,48 @@ class LayerNorm(nn.LayerNorm):
 
 
 class QuickGELU(nn.Module):
+    ''' Quick GELU '''
     def forward(self, x: torch.Tensor):
         return x * torch.sigmoid(1.702 * x)
 
+class GRLU(nn.Module):
+    ''' 相比 ReLU 在 0 时更平缓，导数连续，减少训练时梯度消失的问题 '''
+    def forward(x):
+        return x * 0.5 * (1.0 + torch.erf(x / math.sqrt(2.0)))
 
 class ResidualAttentionBlock(nn.Module):
+    '''
+    残差注意力前向层
+
+    d_model: 嵌入维度
+    n_head: 注意力头数，这里每个注意力头 W(q) W(k) W(v) 的维度为  d_model // n_head
+    attn_mask: 掩码矩阵 shape= (seq_len, seq_len), 提示 attention 那些可以注意，那些不能注意,
+    use_flash_attention: 是否使用 flash_atten
+    '''
     def __init__(self, d_model: int, n_head: int, attn_mask: torch.Tensor = None, use_flash_attention: bool = False):
         super().__init__()
 
         self.attn = nn.MultiheadAttention(d_model, n_head) if not use_flash_attention else FlashMHA(d_model, n_head)
+        # 归一化
         self.ln_1 = LayerNorm(d_model)
+        # 前向层
         self.mlp = nn.Sequential(OrderedDict([
-            ("c_fc", nn.Linear(d_model, d_model * 4)),
-            ("gelu", QuickGELU()),
-            ("c_proj", nn.Linear(d_model * 4, d_model))
+            ("c_fc", nn.Linear(d_model, d_model * 4)),  # 全连接层 
+            ("gelu", QuickGELU()),  #  激活函数
+            ("c_proj", nn.Linear(d_model * 4, d_model)) # 投影回 d_model
         ]))
+        # 归一化
         self.ln_2 = LayerNorm(d_model)
+        # 掩码
         self.attn_mask = attn_mask
+        # 是否使用 flash_attention
         self.use_flash_attention = use_flash_attention
 
     def attention(self, x: torch.Tensor):
         self.attn_mask = self.attn_mask.to(dtype=x.dtype, device=x.device) if self.attn_mask is not None else None
         if self.use_flash_attention:
             # Batch first is needed for FlashAttention. See https://github.com/HazyResearch/flash-attention/issues/84 for more information.
+            # FlashAttention 需要先进行批量处理。更多信息请参见 https://github.com/HazyResearch/flash-attention/issues/84。
             return self.attn(x.transpose(1, 0))[0].transpose(1, 0)
         else:
             return self.attn(x, x, x, need_weights=False, attn_mask=self.attn_mask)[0]
@@ -249,15 +306,24 @@ class ResidualAttentionBlock(nn.Module):
 
 
 class Transformer(nn.Module):
+    '''
+    transformer embed
+    
+    width: 嵌入维度
+    layers: 层数
+    heads: 注意力头数
+    attn_mask: 掩码标签(将 K * Q_t 设置为无限小 )
+    use_flash_attention: 是否使用 flash_attention
+    '''
     def __init__(self, width: int, layers: int, heads: int, attn_mask: torch.Tensor = None, use_flash_attention: bool = False):
         super().__init__()
-        self.width = width
+        self.width = width # 输入宽度
         self.layers = layers
         self.grad_checkpointing = False
         self.resblocks = nn.Sequential(*[ResidualAttentionBlock(width, heads, attn_mask, use_flash_attention) for _ in range(layers)])
 
     def forward(self, x: torch.Tensor):
-        if self.grad_checkpointing and not torch.jit.is_scripting():
+        if self.grad_checkpointing and not torch.jit.is_scripting(): # 判断当前代码是否在 TorchScript 的 scripting 环境下执行
             for r in self.resblocks:
                 x = checkpoint(r, x)
             return x        
@@ -265,28 +331,46 @@ class Transformer(nn.Module):
 
 
 class VisualTransformer(nn.Module):
+    '''
+    ViT
+
+    input_resulution: 输入分辨率
+    patch_size: 每一块的大小
+    width: 嵌入维度
+    layers: transformer 层数
+    heads: transformer: 注意力头数
+    output_dim: 输出维度
+    use_flash_attention: 使用 flash_atten
+    '''
     def __init__(self, input_resolution: int, patch_size: int, width: int, layers: int, heads: int, output_dim: int, use_flash_attention: bool = False):
         super().__init__()
         self.input_resolution = input_resolution
-        self.grid_size = (self.input_resolution // patch_size, self.input_resolution // patch_size)
+        self.grid_size = (self.input_resolution // patch_size, self.input_resolution // patch_size)  # 网格大小
         self.output_dim = output_dim
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=width, kernel_size=patch_size, stride=patch_size, bias=False)
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=width, kernel_size=patch_size, stride=patch_size, bias=False) # 将图片分割成 transformer 的输入，3 -> embed( Vit 中 表示 width)
 
-        scale = width ** -0.5
+        scale = width ** -0.5 # 缩放比例 Q_dim
         self.class_embedding = nn.Parameter(scale * torch.randn(width))
-        self.positional_embedding = nn.Parameter(scale * torch.randn((input_resolution // patch_size) ** 2 + 1, width))
-        self.ln_pre = LayerNorm(width)
+        self.positional_embedding = nn.Parameter(scale * torch.randn((input_resolution // patch_size) ** 2 + 1, width)) # 位置编码
+        self.ln_pre = LayerNorm(width) # 前置归一层
 
         self.transformer = Transformer(width, layers, heads, use_flash_attention=use_flash_attention)
 
-        self.ln_post = LayerNorm(width)
-        self.proj = nn.Parameter(scale * torch.randn(width, output_dim))
+        self.ln_post = LayerNorm(width) # 后置归一层
+        self.proj = nn.Parameter(scale * torch.randn(width, output_dim)) # 投影层
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):
+        ''' 当不在 jit 下是进行梯度检查'''
         self.transformer.grad_checkpointing = enable
 
     def random_masking(self, x, mask_ratio):
+        '''
+        随机掩码
+
+        x: 输入
+        mask_ratio: 掩码率
+        '''
         N, L, D = x.shape  # batch, length, dim
         len_keep = int((L - 1) * (1 - mask_ratio))
 
@@ -303,10 +387,14 @@ class VisualTransformer(nn.Module):
         return x_masked_add
 
     def forward(self, x: torch.Tensor, mask_ratio: float = 0.0):
-        x = self.conv1(x)  # shape = [*, width, grid, grid]
-        x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
-        x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
-        x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]
+        '''
+        x: 图像输入 N3WH
+        mask_ratio: 掩码率
+        '''
+        x = self.conv1(x)  # output shape = [*, width, grid, grid]
+        x = x.reshape(x.shape[0], x.shape[1], -1)  # output shape = [*, width, grid ** 2]
+        x = x.permute(0, 2, 1)  # output shape = [*, grid ** 2, width]
+        x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device), x], dim=1)  # output shape = [*, grid ** 2 + 1, width]
         x = x + self.positional_embedding.to(x.dtype)
         if mask_ratio != 0:
             x = self.random_masking(x, mask_ratio)
