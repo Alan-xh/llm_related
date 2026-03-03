@@ -32,7 +32,8 @@ identity re-injection after context compression. Builds on s10's protocols.
     "You are 'coder', role: backend, team: my-team"
 
 Key insight: "The agent finds work itself."
-主要思想: Agent 自己找工作
+主要思想: Agent 自己找工作，在 idle 状态时读取邮箱或者读取 task 中找工作
+task_{id}.json: {id, subject, owner}
 """
 
 import json
@@ -169,7 +170,7 @@ class TeammateManager:
         self.dir = team_dir
         self.dir.mkdir(exist_ok=True)
         self.config_path = self.dir / "config.json"
-        self.config = self._load_config() # {team_name, members: [{name, role, status}]}
+        self.config = self._load_config() # {team_name, members: [{name, role, status}]} 
         self.threads = {}
 
     def _load_config(self) -> dict:
@@ -187,6 +188,7 @@ class TeammateManager:
         return None
 
     def _set_status(self, name: str, status: str):
+        '''status: working, idle, shutdown'''
         member = self._find_member(name)
         if member:
             member["status"] = status
@@ -228,10 +230,10 @@ class TeammateManager:
         while True:
             # -- WORK PHASE: standard agent loop --
             for _ in range(50):
-                inbox = BUS.read_inbox(name)
+                inbox = BUS.read_inbox(name) # 读取自己邮箱，并清空邮箱
                 for msg in inbox:
                     if msg.get("type") == "shutdown_request":
-                        self._set_status(name, "shutdown")
+                        self._set_status(name, "shutdown") # 遇到 shutdown_request 消息，关机
                         return
                     messages.append({"role": "user", "content": json.dumps(msg)})
                 try:
@@ -252,6 +254,7 @@ class TeammateManager:
                 idle_requested = False
                 for block in response.content:
                     if block.type == "tool_use":
+                        # 进入空闲阶段，将轮询新任务。
                         if block.name == "idle":
                             idle_requested = True
                             output = "Entering idle phase. Will poll for new tasks."
@@ -266,30 +269,34 @@ class TeammateManager:
                 messages.append({"role": "user", "content": results})
                 if idle_requested:
                     break
-
+            
+            # 轮询状态: 收集收件箱消息和未认领任务的信息，并恢复 working 状态 -
             # -- IDLE PHASE: poll for inbox messages and unclaimed tasks --
             self._set_status(name, "idle")
-            resume = False
-            polls = IDLE_TIMEOUT // max(POLL_INTERVAL, 1)
+            resume = False # 恢复 work
+            polls = IDLE_TIMEOUT // max(POLL_INTERVAL, 1) # 收集次数 = 休息时间 // 收集间隔
             for _ in range(polls):
                 time.sleep(POLL_INTERVAL)
                 inbox = BUS.read_inbox(name)
                 if inbox:
                     for msg in inbox:
+                        # 如果邮件里面有 shutdown_request 直接关闭
                         if msg.get("type") == "shutdown_request":
                             self._set_status(name, "shutdown")
                             return
                         messages.append({"role": "user", "content": json.dumps(msg)})
                     resume = True
                     break
+                # 查询空余任务
                 unclaimed = scan_unclaimed_tasks()
                 if unclaimed:
                     task = unclaimed[0]
-                    claim_task(task["id"], name)
+                    claim_task(task["id"], name) # 认领任务
                     task_prompt = (
                         f"<auto-claimed>Task #{task['id']}: {task['subject']}\n"
                         f"{task.get('description', '')}</auto-claimed>"
                     )
+                    # 如果消息小于
                     if len(messages) <= 3:
                         messages.insert(0, make_identity_block(name, role, team_name))
                         messages.insert(1, {"role": "assistant", "content": f"I am {name}. Continuing."})
@@ -317,6 +324,7 @@ class TeammateManager:
             return BUS.send(sender, args["to"], args["content"], args.get("msg_type", "message"))
         if tool_name == "read_inbox":
             return json.dumps(BUS.read_inbox(sender), indent=2)
+        # 收到停机响应，发给 lead 停机响应
         if tool_name == "shutdown_response":
             req_id = args["request_id"]
             with _tracker_lock:
@@ -327,6 +335,7 @@ class TeammateManager:
                 "shutdown_response", {"request_id": req_id, "approve": args["approve"]},
             )
             return f"Shutdown {'approved' if args['approve'] else 'rejected'}"
+        # 发给 lead 停机计划
         if tool_name == "plan_approval":
             plan_text = args.get("plan", "")
             req_id = str(uuid.uuid4())[:8]
@@ -337,6 +346,7 @@ class TeammateManager:
                 {"request_id": req_id, "plan": plan_text},
             )
             return f"Plan submitted (request_id={req_id}). Waiting for approval."
+        # 认领任务
         if tool_name == "claim_task":
             return claim_task(args["task_id"], sender)
         return f"Unknown tool: {tool_name}"
@@ -360,7 +370,7 @@ class TeammateManager:
             # 响应关机
             {"name": "shutdown_response", "description": "Respond to a shutdown request.",
              "input_schema": {"type": "object", "properties": {"request_id": {"type": "string"}, "approve": {"type": "boolean"}, "reason": {"type": "string"}}, "required": ["request_id", "approve"]}},
-            # 计划批准
+            # 提交自己的计划给 lead 批准
             {"name": "plan_approval", "description": "Submit a plan for lead approval.",
              "input_schema": {"type": "object", "properties": {"plan": {"type": "string"}}, "required": ["plan"]}},
             # 发出无工作任务的信号。进入空闲轮询阶段
@@ -372,6 +382,7 @@ class TeammateManager:
         ]
 
     def list_all(self) -> str:
+        ''' 列出所有成员'''
         if not self.config["members"]:
             return "No teammates."
         lines = [f"Team: {self.config['team_name']}"]
@@ -380,6 +391,7 @@ class TeammateManager:
         return "\n".join(lines)
 
     def member_names(self) -> list:
+        ''' 列出所有人员名称 '''
         return [m["name"] for m in self.config["members"]]
 
 
@@ -443,6 +455,7 @@ def _run_edit(path: str, old_text: str, new_text: str) -> str:
 
 # -- Lead-specific protocol handlers --
 def handle_shutdown_request(teammate: str) -> str:
+    ''' 处理某个 teammate 的 plan_approval '''
     req_id = str(uuid.uuid4())[:8]
     with _tracker_lock:
         shutdown_requests[req_id] = {"target": teammate, "status": "pending"}
@@ -454,6 +467,7 @@ def handle_shutdown_request(teammate: str) -> str:
 
 
 def handle_plan_review(request_id: str, approve: bool, feedback: str = "") -> str:
+    ''' lead 处理任务请求'''
     with _tracker_lock:
         req = plan_requests.get(request_id)
     if not req:
@@ -468,6 +482,7 @@ def handle_plan_review(request_id: str, approve: bool, feedback: str = "") -> st
 
 
 def _check_shutdown_status(request_id: str) -> str:
+    ''' 获得停机请求状态 '''
     with _tracker_lock:
         return json.dumps(shutdown_requests.get(request_id, {"error": "not found"}))
 
@@ -483,9 +498,13 @@ TOOL_HANDLERS = {
     "send_message":      lambda **kw: BUS.send("lead", kw["to"], kw["content"], kw.get("msg_type", "message")),
     "read_inbox":        lambda **kw: json.dumps(BUS.read_inbox("lead"), indent=2),
     "broadcast":         lambda **kw: BUS.broadcast("lead", kw["content"], TEAM.member_names()),
+    # 发送给队友停机请求
     "shutdown_request":  lambda **kw: handle_shutdown_request(kw["teammate"]),
+    # 获得队友的停机状态
     "shutdown_response": lambda **kw: _check_shutdown_status(kw.get("request_id", "")),
+    # 响应队友的 plan_approval
     "plan_approval":     lambda **kw: handle_plan_review(kw["request_id"], kw["approve"], kw.get("feedback", "")),
+    # 休息
     "idle":              lambda **kw: "Lead does not idle.",
     "claim_task":        lambda **kw: claim_task(kw["task_id"], "lead"),
 }
@@ -500,24 +519,34 @@ TOOLS = [
      "input_schema": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}},
     {"name": "edit_file", "description": "Replace exact text in file.",
      "input_schema": {"type": "object", "properties": {"path": {"type": "string"}, "old_text": {"type": "string"}, "new_text": {"type": "string"}}, "required": ["path", "old_text", "new_text"]}},
+    # 生成自动队友
     {"name": "spawn_teammate", "description": "Spawn an autonomous teammate.",
      "input_schema": {"type": "object", "properties": {"name": {"type": "string"}, "role": {"type": "string"}, "prompt": {"type": "string"}}, "required": ["name", "role", "prompt"]}},
+    # 显示所有队友
     {"name": "list_teammates", "description": "List all teammates.",
      "input_schema": {"type": "object", "properties": {}}},
+    # 发送消息给队友邮箱
     {"name": "send_message", "description": "Send a message to a teammate.",
      "input_schema": {"type": "object", "properties": {"to": {"type": "string"}, "content": {"type": "string"}, "msg_type": {"type": "string", "enum": list(VALID_MSG_TYPES)}}, "required": ["to", "content"]}},
+    # 读取和清理 lead 邮箱
     {"name": "read_inbox", "description": "Read and drain the lead's inbox.",
      "input_schema": {"type": "object", "properties": {}}},
+    # 广播消息给所有队友
     {"name": "broadcast", "description": "Send a message to all teammates.",
      "input_schema": {"type": "object", "properties": {"content": {"type": "string"}}, "required": ["content"]}},
+    # 发送队友请求停机
     {"name": "shutdown_request", "description": "Request a teammate to shut down.",
      "input_schema": {"type": "object", "properties": {"teammate": {"type": "string"}}, "required": ["teammate"]}},
+    # 检查停机请求状态
     {"name": "shutdown_response", "description": "Check shutdown request status.",
      "input_schema": {"type": "object", "properties": {"request_id": {"type": "string"}}, "required": ["request_id"]}},
+    # 批准或者拒绝队友的计划
     {"name": "plan_approval", "description": "Approve or reject a teammate's plan.",
      "input_schema": {"type": "object", "properties": {"request_id": {"type": "string"}, "approve": {"type": "boolean"}, "feedback": {"type": "string"}}, "required": ["request_id", "approve"]}},
+    # 休息
     {"name": "idle", "description": "Enter idle state (for lead -- rarely used).",
      "input_schema": {"type": "object", "properties": {}}},
+    # 认领任务
     {"name": "claim_task", "description": "Claim a task from the board by ID.",
      "input_schema": {"type": "object", "properties": {"task_id": {"type": "integer"}}, "required": ["task_id"]}},
 ]
@@ -525,6 +554,7 @@ TOOLS = [
 
 def agent_loop(messages: list):
     while True:
+        # 将 lead 信箱添加进 messages，并清理信箱
         inbox = BUS.read_inbox("lead")
         if inbox:
             messages.append({
@@ -578,6 +608,7 @@ if __name__ == "__main__":
             print(json.dumps(BUS.read_inbox("lead"), indent=2))
             continue
         if query.strip() == "/tasks":
+            ''' 打印所有任务 {id, subject, owner} '''
             TASKS_DIR.mkdir(exist_ok=True)
             for f in sorted(TASKS_DIR.glob("task_*.json")):
                 t = json.loads(f.read_text())
