@@ -1,6 +1,6 @@
 """
 任务 3：目标检测（Object Detection）
-代表模型：Faster R-CNN（简化手写实现，不调用 torchvision.detection）
+代表模型：Faster R-CNN（基于区域的更快卷积神经网络, 简化手写实现，不调用 torchvision.detection）
 损失函数：RPN 分类/回归损失 + 检测头分类/回归损失
 使用合成数据演示目标检测训练流程。
 """
@@ -30,42 +30,62 @@ STRIDE = 16
 
 
 def box_iou(boxes1, boxes2):
-    """计算两组框之间的 IoU，boxes 格式为 [x1, y1, x2, y2]。"""
+    """
+    计算两组边界框之间的交并比（IoU, Intersection over Union），boxes 格式为 [x1, y1, x2, y2]
+
+    boxes1: [N, 4], 格式: [x1, y1, x2, y2]
+    boxes2: [M, 4], 格式: [x1, y1, x2, y2]
+
+    输出: [N, M], 交并比
+    """
+    # 计算面积 [N], [M]
     area1 = (boxes1[:, 2] - boxes1[:, 0]) * (boxes1[:, 3] - boxes1[:, 1])
     area2 = (boxes2[:, 2] - boxes2[:, 0]) * (boxes2[:, 3] - boxes2[:, 1])
 
-    inter_x1 = torch.max(boxes1[:, None, 0], boxes2[None, :, 0])
+    # 两两对比计算交集区域左上角和右下角坐标 [N, M]
+    inter_x1 = torch.max(boxes1[:, None, 0], boxes2[None, :, 0]) 
     inter_y1 = torch.max(boxes1[:, None, 1], boxes2[None, :, 1])
     inter_x2 = torch.min(boxes1[:, None, 2], boxes2[None, :, 2])
     inter_y2 = torch.min(boxes1[:, None, 3], boxes2[None, :, 3])
 
+    # 计算交集面积 [N, M]
     inter_w = (inter_x2 - inter_x1).clamp(min=0)
     inter_h = (inter_y2 - inter_y1).clamp(min=0)
     inter = inter_w * inter_h
 
+    # 计算并级面积
     union = area1[:, None] + area2[None, :] - inter
     return inter / union
 
 
 def nms(boxes, scores, threshold):
-    """非极大值抑制。"""
+    """
+    非极大值抑制，去除冗余(交并比过高)检测框,并按分数从高到低的顺序输出
+    
+    boxes: [N, 4], 边界框坐标 [x1, y1, x2, y2]
+    scores: [N,], 框得分
+    threshold: 交并比阈值，去除重叠度过高的框
+    """
     if boxes.numel() == 0:
         return torch.empty((0,), dtype=torch.long, device=boxes.device)
-    order = scores.argsort(descending=True)
-    keep = []
+    order = scores.argsort(descending=True) # 降序索引
+    keep = [] # 保留的最大框
     while order.numel() > 0:
-        i = order[0]
-        keep.append(i.item())
+        i = order[0] # 取分数最大的索引
+        keep.append(i.item()) # 取概率最大框的索引
         if order.numel() == 1:
             break
-        ious = box_iou(boxes[i:i + 1], boxes[order[1:]])[0]
-        mask = ious <= threshold
-        order = order[1:][mask]
+        ious = box_iou(boxes[i:i + 1], boxes[order[1:]])[0] # 取概率最大的 boxe 和其他框计算交并比
+        mask = ious <= threshold # 筛选出 IoU 小于阈值的框的序号
+        order = order[1:][mask] # 筛选出 IoU 小于阈值的框的索引
     return torch.tensor(keep, dtype=torch.long, device=boxes.device)
 
 
 def generate_anchors(feature_h, feature_w, stride=STRIDE):
-    """为每个特征图位置生成多尺度锚框。"""
+    """
+    为每个特征图位置生成多尺度锚框
+    
+    """
     device = torch.device("cpu")  # 后续会移到目标设备
     shifts_x = torch.arange(0, feature_w, device=device) * stride
     shifts_y = torch.arange(0, feature_h, device=device) * stride

@@ -19,9 +19,10 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class MLP(nn.Module):
-    """手写多层感知机。"""
+    """手写多层感知机"""
 
     def __init__(self, input_dim, hidden_dim, output_dim):
+        ''' 3 个全连接层 '''
         super().__init__()
         self.fc1 = nn.Linear(input_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
@@ -34,11 +35,11 @@ class MLP(nn.Module):
 
 
 def get_synthetic_dataset(num_samples=2000):
-    """构造 y = X @ w + b + 噪声 的回归数据。"""
-    x = torch.randn(num_samples, INPUT_DIM)
-    true_w = torch.randn(INPUT_DIM, OUTPUT_DIM)
-    true_b = torch.randn(OUTPUT_DIM)
-    y = x @ true_w + true_b + 0.1 * torch.randn(num_samples, OUTPUT_DIM)
+    """构造 y = X @ w + b + 噪声 的回归数据"""
+    x = torch.randn(num_samples, INPUT_DIM) # 输入
+    true_w = torch.randn(INPUT_DIM, OUTPUT_DIM) # 权重
+    true_b = torch.randn(OUTPUT_DIM) # 偏置
+    y = x @ true_w + true_b + 0.1 * torch.randn(num_samples, OUTPUT_DIM) # 加上一点噪声
     return TensorDataset(x, y)
 
 
@@ -48,7 +49,7 @@ def main():
     )
 
     model = MLP(INPUT_DIM, 64, OUTPUT_DIM).to(DEVICE)
-    criterion = nn.MSELoss()
+    criterion = nn.MSELoss() # 损失函数: 均方误差
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 
     model.train()

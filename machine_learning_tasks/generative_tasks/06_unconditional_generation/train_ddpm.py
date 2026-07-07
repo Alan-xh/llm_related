@@ -1,6 +1,6 @@
 """
 任务 6：无条件生成（Unconditional Generation）
-代表模型：扩散模型（DDPM）
+代表模型：扩散模型（DDPM, Denoising Diffusion Probabilistic Model, 去噪扩散概率模型）
 损失函数：MSE（预测噪声）
 使用合成 32x32 图像训练一个小型 U-Net 噪声预测网络。
 """

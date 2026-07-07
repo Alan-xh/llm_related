@@ -19,6 +19,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class ConvBlock(nn.Module):
     def __init__(self, in_ch, out_ch):
+        ''' [b, in_ch] -> [in_ch, out_ch] + bn + relu  + [out_ch, out_ch] + bn + relu  -> [b, out_ch]'''
         super().__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, 3, padding=1),
@@ -36,13 +37,16 @@ class ConvBlock(nn.Module):
 class UNet(nn.Module):
     def __init__(self, in_ch=3, num_classes=NUM_CLASSES, base=32):
         super().__init__()
+        # 上采样 [b, in_chanel] -> [b, ]
         self.enc1 = ConvBlock(in_ch, base)
         self.pool1 = nn.MaxPool2d(2)
         self.enc2 = ConvBlock(base, base * 2)
         self.pool2 = nn.MaxPool2d(2)
 
+        # 瓶颈
         self.bottleneck = ConvBlock(base * 2, base * 4)
 
+        # 转置卷积,根据 stride 间隔插 0,然后 padding,然后四周补上 kernal_size - 1 - padding 的 0，然后将原始卷积核上下左右翻转然后进行卷积计算
         self.up2 = nn.ConvTranspose2d(base * 4, base * 2, kernel_size=2, stride=2)
         self.dec2 = ConvBlock(base * 4, base * 2)
         self.up1 = nn.ConvTranspose2d(base * 2, base, kernel_size=2, stride=2)
@@ -59,7 +63,7 @@ class UNet(nn.Module):
 
 
 def dice_loss(pred, target, smooth=1.0):
-    """多分类 Dice Loss。"""
+    """多分类 Dice Loss"""
     pred = F.softmax(pred, dim=1)
     oh = F.one_hot(target, num_classes=pred.shape[1]).permute(0, 3, 1, 2).float()
     intersection = (pred * oh).sum(dim=(2, 3))

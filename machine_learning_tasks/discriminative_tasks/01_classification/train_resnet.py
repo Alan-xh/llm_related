@@ -17,15 +17,16 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class BasicBlock(nn.Module):
-    """ResNet18 的基础残差块。"""
+    """ResNet18 的基础残差块"""
 
     expansion = 1
 
     def __init__(self, in_ch, out_ch, stride=1):
+        ''' conv -> bn -> relu - > conv - > bn -> add -> relu '''
         super().__init__()
         self.conv1 = nn.Conv2d(in_ch, out_ch, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(out_ch)
-        self.relu = nn.ReLU(inplace=True)
+        self.bn1 = nn.BatchNorm2d(out_ch) # 批归一，在 [b, h, w] 维度进行归一化， 同一批图片中，所有像素点在同一个通道上的整体表现
+        self.relu = nn.ReLU(inplace=True) # 激活函数
         self.conv2 = nn.Conv2d(out_ch, out_ch, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(out_ch)
 
@@ -48,18 +49,22 @@ class ResNet18(nn.Module):
     """手写 ResNet18。"""
 
     def __init__(self, num_classes=NUM_CLASSES):
+        ''' conv -> bn -> relu -> maxpool -> layer1 -> layer2 -> layer3 -> layer4 -> avgpool -> fc '''
         super().__init__()
+        # 输入卷积层
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
+        # 4 个残差块
         self.layer1 = self._make_layer(64, 64, 2, stride=1)
         self.layer2 = self._make_layer(64, 128, 2, stride=2)
         self.layer3 = self._make_layer(128, 256, 2, stride=2)
         self.layer4 = self._make_layer(256, 512, 2, stride=2)
 
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1)) # 任何尺寸自适应转成 1:1 大小
+        # 全连接层，映射多类别概率分布
         self.fc = nn.Linear(512, num_classes)
 
     def _make_layer(self, in_ch, out_ch, blocks, stride):
@@ -94,7 +99,7 @@ def main():
 
     # 手写 ResNet18，最后一层输出 NUM_CLASSES
     model = ResNet18(num_classes=NUM_CLASSES).to(DEVICE)
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss() # 损失函数: 交叉熵
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 
     model.train()
