@@ -9,6 +9,14 @@ from tqdm import tqdm
 import warnings
 warnings.filterwarnings('ignore')
 
+'''
+工业落地、快速上线	BIO	最简单，训练快，CRF解码成熟，调参容易。
+学术发论文、追求SOTA BIOES 或 Span-based	BIOES提供最精细的边界信号；Span-based在嵌套数据集（如ACE2004）上表现惊艳。
+实体严重嵌套（如医疗、法律） Span-based 或 生成式	序列标注（BIO等）天生不适合处理嵌套，必须换赛道。
+数据极少（少于1000条） BIO + CRF	CRF 的转移矩阵能弥补数据不足，强行教会模型“I不能开头”。Span-based在少数据下容易过拟合。
+实体极长（如书名、地址） BIOES	E 标签能明确告知模型“这里结束了”，防止长实体被过早截断或无限延伸。
+'''
+
 # ==================== 1. CRF 层实现 ====================
 class CRF(nn.Module):
     """
@@ -74,7 +82,7 @@ class CRF(nn.Module):
     
     def _compute_real_score(self, emissions, tags, mask):
         """
-        计算真实标签序列的得分
+        计算真实标签序列的得分,每个标签的得分 + 上一个标签转移至当前标签的得分
         
         Args:
             emissions (torch.FloatTensor): 发射分数 [seq_len, batch_size, num_tags]
@@ -276,7 +284,7 @@ class BertBiLSTMCRF(nn.Module):
         lstm_output, _ = self.lstm(sequence_output)  # [batch_size, seq_len, hidden_size*2]
         
         # 全连接层
-        emissions = self.fc(lstm_output)  # [batch_size, seq_len, num_tags]
+        emissions = self.fc(lstm_output)  # 置信度 [batch_size, seq_len, num_tags]
         
         # 如果提供了标签，计算损失
         if labels is not None:

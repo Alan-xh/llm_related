@@ -8,6 +8,7 @@ test-*.py
 *.py[cod]
 *$py.class
 .idea/
+.vscode/
 
 # C extensions
 *.so

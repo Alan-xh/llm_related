@@ -1,3 +1,15 @@
+'''
+MLA(Multi-head Latent Attention, 多头潜在注意力) 
+
+核心思想是通过低秩压缩（Low-Rank Compression）将Key和Value（KV）先投影到一个低维的潜在空间（Latent Space） 中，再进行后续的注意力计算。这样做的主要目的，是在保持模型性能的同时，显著压缩KV缓存（KV Cache） 的大小，从而降低大语言模型推理时的内存占用和带宽需求。KV 压缩到一个低维的潜在向量（Latent Vector）中，推理时再动态解压出来。解决长上下文推理问题。
+
+MHA（Multi-Head Attention，标准多头注意力）: 每个查询头（Q）都对应独立的键（K）和值（V）头
+MQA（Multi-Query Attention，多查询注意力）: 注意力头共享同一份键（K）和值（V），只有查询（Q）是多头的
+GQA（Grouped-Query Attention，分组查询注意力）: 将Q头分成若干组，每组共享一份KV。代表作是Meta的Llama 2/3。它既比MHA省钱，又比MQA效果好，是目前开源大模型最主流的方案。
+
+Sparse Attention（稀疏注意力）：不看全部token，只让每个token关注局部的、或步长固定的少数token。
+FlashAttention（闪存注意力）：严格来说它不是改变注意力数学公式的变体，而是IO感知（IO-aware）的精确注意力实现。它不压缩参数，而是通过分块（tiling）和重计算，避免读写慢速的HBM（高带宽内存），大幅加速了MHA和GQA的训练速度。
+'''
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -31,13 +43,13 @@ class MLA(nn.Module):
         self.n_heads = n_heads  # 注意力机制头数
         self.q_lora_rank = q_lora_rank  # query降秩纬度
         self.kv_loara_rank = kv_lora_rank  # kv降秩纬度
-        self.qk_nope_head_dim = qk_nope_head_dim  # 4096
-        self.qk_rope_head_dim = qk_rope_head_dim  # 768
-        self.qk_head_dim = qk_nope_head_dim + qk_rope_head_dim
-        self.v_head_dim = v_head_dim
-        self.mode = mode
-        self.max_seq_len = max_seq_len
-        self.max_batch_size = max_batch_size
+        self.qk_nope_head_dim = qk_nope_head_dim  # 不包含旋转位置编码的特征维度 4096
+        self.qk_rope_head_dim = qk_rope_head_dim  # 包含旋转位置编码的特征维度 768
+        self.qk_head_dim = qk_nope_head_dim + qk_rope_head_dim # 完整的 Query/Key 头维度
+        self.v_head_dim = v_head_dim # 完整的 Value 头维度
+        self.mode = mode # native or rope
+        self.max_seq_len = max_seq_len # 缓存的最大序列长度
+        self.max_batch_size = max_batch_size # 缓存的最大批量大小
 
         # 定义投影矩阵
         self.wq_a = nn.Linear(dim, q_lora_rank)
