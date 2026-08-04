@@ -27,7 +27,7 @@ MLP_RATIO = 4.0
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # 扩散过程参数
-betas = torch.linspace(1e-4, 0.02, T)
+betas = torch.linspace(1e-4, 0.02, T) # torch.linspace 创建等间隔数值序列的函数
 alphas = 1.0 - betas
 alphas_cumprod = torch.cumprod(alphas, dim=0)
 sqrt_alphas_cumprod = torch.sqrt(alphas_cumprod)

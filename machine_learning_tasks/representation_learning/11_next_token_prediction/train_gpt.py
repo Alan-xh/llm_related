@@ -8,7 +8,7 @@ import math
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-
+from transformers import qwen3
 # 超参数
 BATCH_SIZE = 32
 EPOCHS = 5
