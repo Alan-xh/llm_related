@@ -1,3 +1,15 @@
+'''
+# siglip: Sigmoid + 二元交叉熵
+labels = 2 * eye - torch.ones_like(logits_per_text)  # 1和-1标签
+loglik = F.logsigmoid(labels * logits_per_text)      # SigLiP loss
+
+# 标准CLIP使用：Softmax + 交叉熵
+logits = logits_per_text * temperature
+labels = torch.arange(b, device=device)
+loss_i = F.cross_entropy(logits, labels)
+loss_t = F.cross_entropy(logits.t(), labels)
+'''
+
 from transformers import PreTrainedModel, PretrainedConfig, AutoModel, AutoTokenizer, AutoProcessor
 from transformers import ViTImageProcessor, ViTForImageClassification
 
@@ -61,7 +73,7 @@ class SiglipModel(PreTrainedModel):
         
         b = logits_per_text.shape[0]
         eye = torch.eye(b, device=logits_per_text.device) # 生成单位矩阵
-        labels = 2*eye - torch.ones_like(logits_per_text, device=logits_per_text.device) # 对角线全为1，非对角线为-1，即成对的图文标签为1，非成对的为-1
+        labels = 2 * eye - torch.ones_like(logits_per_text, device=logits_per_text.device) # 对角线全为1，非对角线为-1，即成对的图文标签为1，非成对的为-1
         loglik = F.logsigmoid(labels * logits_per_text)
         nll = -torch.sum(loglik, dim=-1)
         loss = nll.mean()
