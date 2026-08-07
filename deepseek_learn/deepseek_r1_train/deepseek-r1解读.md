@@ -30,3 +30,43 @@ rl方法：GRPO\
 ## rl二阶段(通用对齐的rl)
 
 通用对齐RL（RLHF）：融入人类偏好奖励模型（Helpfulness & Harmlessness），确保模型在开放域任务中的安全性与实用性。
+
+
+# 基于 GRPO 的大模型强化学习对齐 Pipeline 技术架构与接口文档
+
+## 1. 架构总览
+
+本流水线实现了基于 **GRPO (Group Relative Policy Optimization)** 的大语言模型数学推理对齐方案。整个架构省去了传统 PPO 训练中复杂的 Critic（价值）模型，通过让模型针对单个 Prompt 批量生成多条候选回复（`num_generations=16`），并在组内通过多维奖励函数（包含格式、标签标记、数值类型、结果正确性）进行相对优势归一化，直接对 Policy 模型进行策略梯度更新。
+
+```
+[Prompt 输入] ---> [Actor 模型 (Qwen2.5-0.5B)] ---> [生成多条候选回复 Group (N=16)]
+                                                           |
+          +------------------------------------------------+
+          |
+          v
+[多维奖励计算组件] ---> [Mark 奖励] / [格式奖励] / [数值奖励] / [正确性奖励]
+          |
+          v
+[组内标准化优势计算 (Advantage)] ---> [GRPO 策略截断更新损失] ---> [权重迭代]
+
+```
+
+## 2. 张量 Shape 流动追踪 (Tensor Flow Table)
+
+| 节点/模块 | 输入 Shape | 输出 Shape | 说明 / 维度变化原因 |
+| --- | --- | --- | --- |
+| Prompt 编码 | `[B, Seq_Len_Prompt]` | `[B, Seq_Len_Prompt]` | 输入 Token 化后的 Prompt 序列 |
+| 模型生成 (Generations) | `[B, Seq_Len_Prompt]` | `[B * Num_Gen, Seq_Len_Completion]` | 针对每个 Prompt 批量采样生成多条回复 (`Num_Gen=16`) |
+| 奖励计算器 | `[B * Num_Gen, Seq_Len]` | `[B * Num_Gen]` | 对每条生成文本评估并输出对应的标量奖励值 |
+| 优势归一化 (Advantage) | `[B * Num_Gen]` | `[B * Num_Gen]` | 在组内（Group 维度）减去均值并除以标准差进行标准化 |
+
+## 3. 核心公式与代码映射
+
+* **群组相对优势估计公式**:
+$A_i = \frac{R_i - \text{mean}(R_{\text{group}})}{\text{std}(R_{\text{group}})}$
+* **代码对应**: 由 `GRPOTrainer` 内部自动完成组内奖励的收集、均值/标准差计算及优势向量生成。
+
+
+* **多维奖励联合加权**:
+$R_{\text{total}} = R_{\text{correctness}} + R_{\text{digit}} + R_{\text{format}} + R_{\text{mark}}$
+* **代码对应**: `reward_funcs` 列表中传入的 `[mark_reward, soft_format_reward, hard_format_reward, digit_reward, correctness_reward]` 依次计算各项分值并由 Trainer 聚合。
