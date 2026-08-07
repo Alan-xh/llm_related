@@ -8,7 +8,7 @@
     - 论文来源: Kingma & Welling, "Auto-Encoding Variational Bayes", ICLR 2014.
 
 核心思想与机制:
-    - 通过概率图模型对数据分布 p_theta(x) 进行建模，将高维数据 x 映射到连续的低维隐空间 z ~ q_phi(z|x)。
+    - 通过概率图模型对数据分布 p_theta(x) 进行建模，将高维数据 x 映射到连续的低维隐空间(多组均值和对数方差) z ~ q_phi(z|x)。
     - 为解决采样过程的不可导问题，采用重参数化技巧 (Reparameterization Trick)：
       z = \mu(x) + \sigma(x) \odot \epsilon, \epsilon ~ N(0, I)。
     - 解码器 p_theta(x|z) 从隐变量 z 重新构建原始图像。
@@ -74,7 +74,7 @@ def get_data_loaders(config: Config):
     """
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.5,), (0.5,))  # 归一化像素值至 [-1, 1]
+        transforms.Normalize((0.5,), (0.5,))  # 归一化像素值至 [-1, 1], arg1 表示均值， arg2 表示标准差, (0.5) 表示单通道, RGB 图像为 (0.5, 0.5, 0.5)
     ])
 
     train_dataset = datasets.MNIST(
@@ -87,7 +87,7 @@ def get_data_loaders(config: Config):
     train_loader = DataLoader(
         dataset=train_dataset,
         batch_size=config.BATCH_SIZE,
-        shuffle=True,
+        shuffle=True, # 训练时打乱数据
         num_workers=2,
         pin_memory=True if config.DEVICE.type == "cuda" else False
     )
@@ -100,6 +100,12 @@ class Encoder(nn.Module):
     """
     VAE 编码器网络 (Variational Encoder)
     将高维图像特征映射为高斯隐分布的均值 \mu 与对数方差 \log(\sigma^2)。
+
+    - 均值
+        模型通过反向传播学习如何将相似语义的输入数据, 映射到隐空间中相近的区域中心。
+    - 方差
+        代表了输入数据在隐空间中每个维度上的不确定性（分散程度）,对数方差主要是为了数值计算的稳定性，并防止方差出现负数。
+        模型学习对每个特征维度的确定性有多大。如果某个特征对重建输入至关重要且确定，方差会变小；如果存在模糊性或多种可能，方差会变大。
 
     Args:
         input_dim (int): 输入展平后的特征维度，例如 784
@@ -128,14 +134,14 @@ class Encoder(nn.Module):
         self.logvar_layer = nn.Linear(hidden_dim2, latent_dim)
 
     def forward(self, x: torch.Tensor):
-        # Shape: [B, C, H, W] -> [B, input_dim]
+        # 将图片展平, [B, C, H, W] -> [B, input_dim]
         if x.dim() > 2:
             x = x.view(x.size(0), -1)
             
-        # Shape: [B, input_dim] -> [B, hidden_dim2]
+        # 两层感知机完成特征提取, [B, input_dim] -> [B, hidden_dim2]
         h = self.feature_extractor(x)
         
-        # Shape: [B, hidden_dim2] -> [B, latent_dim]
+        # 全连接层计算均值和方差, [B, hidden_dim2] -> [B, latent_dim]
         mu = self.mu_layer(h)
         logvar = self.logvar_layer(h)
         
@@ -215,7 +221,7 @@ class VAE(nn.Module):
 
     def reparameterize(self, mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
         """
-        重参数化技巧 (Reparameterization Trick)
+        重参数化技巧 (Reparameterization Trick), 据对数方差计算标准差, 生成和标准差形状的高斯分布, 计算隐变量 z
         公式映射: z = \mu + \sigma \odot \epsilon, \sigma = \exp(0.5 * \log(\sigma^2))
 
         Args:
@@ -237,6 +243,11 @@ class VAE(nn.Module):
         return mu
 
     def forward(self, x: torch.Tensor):
+        '''
+        前向层
+        
+        将输入展平编码, 得到均值和方差, 通过重参数化采样得到隐变量 z， 返回采样隐变量 z, 均值和方差
+        '''
         # 展平输入 Shape: [B, 1, 28, 28] -> [B, 784]
         x_flat = x.view(x.size(0), -1)
         
@@ -255,7 +266,9 @@ class VAE(nn.Module):
 # -------------------- 7. 损失函数与评估指标 --------------------
 class VAELoss(nn.Module):
     """
-    VAE 联合损失函数计算模块
+    VAE 联合损失 = 重建 MSE 损失 + KL(Kullback-Leibler, 库尔巴克-莱布勒) 散度正则项
+        MSE 目的：最小化重建误差，使模型尽量拟合训练数据
+        KL 散度：最小化隐变量分布与标准正态分布的差异
 
     公式与代码映射:
         Total Loss = L_{recon} + L_{kl}
