@@ -27,10 +27,8 @@
     - 输入 (Input Tensor):  [B, C, H, W] = [Batch_Size, 1, 28, 28] (MNIST 图像)
     - 隐变量 (Latent Tensor): [B, Latent_Dim] = [Batch_Size, 20]
     - 输出 (Output Tensor): [B, 1, 28, 28] (重建图像)
-================================================================================
 """
 
-# -------------------- 2. 依赖导入 (Imports) --------------------
 import os
 import math
 import torch

@@ -1,4 +1,14 @@
+根据你提供的通用 PyTorch 规范与标准，我已将原有的 PPO 算法代码进行了重构与扩展，完善了**任务 Header 描述**、**模块化层级结构**、**张量 Shape 追踪**、**数学与代码映射注释**以及**配套 Markdown 架构文档**。
+
+---
+
+### Part 1: Python 可执行代码
+
+```python
 """
+========================================================================================
+任务与理论 Header (Task & Theory Header)
+========================================================================================
 任务编号/名称: 任务 12 - 强化学习 (Reinforcement Learning)
 领域分类: 在策略强化学习 (On-Policy Reinforcement Learning) / 连续状态与离散动作控制
 代表架构/算法: PPO (Proximal Policy Optimization - Clip Variants)
@@ -34,8 +44,12 @@
 Input Observation:  Shape [B, obs_dim]  (CartPole-v1 中 obs_dim = 4: 位置, 速度, 角度, 角速度)
 Output Action:       Shape [B]          (离散动作 0 或 1)
 Output State-Value: Shape [B]          (标量状态价值估计)
+========================================================================================
 """
 
+# ======================================================================================
+# 2. 依赖导入 (Imports)
+# ======================================================================================
 import math
 import random
 from typing import Dict, List, Tuple, Union, Optional
@@ -463,3 +477,93 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+```
+
+---
+
+### Part 2: Markdown 技术说明文档
+
+# PPO (Proximal Policy Optimization) 技术架构与接口文档
+
+## 1. 架构总览
+
+PPO 是一种**在策略 (On-Policy)** 的 Actor-Critic 强化学习 Pipeline。整体交互与训练数据流如下：
+
+```
++-----------------------------------------------------------------------------------+
+|                                 PPO Pipeline                                      |
++-----------------------------------------------------------------------------------+
+                                                                                     
+  +------------------+         Action a_t         +-------------------+              
+  |                  | -------------------------> |                   |              
+  |  Actor-Critic    |                            |    Environment    |              
+  |     Network      | <------------------------- |   (CartPole-v1)   |              
+  +------------------+      Obs s_t, Reward r_t   +-------------------+              
+       |          |                                         |                        
+       |          +--------------------+                    |                        
+ logits| V(s)                          | Transition         |                        
+       v                               v                    v                        
++---------------+             +---------------------------------------+              
+| Categorical   |             |            Rollout Buffer             |              
+| Distribution  |             | (s_t, a_t, r_t, V_t, log_p_t, d_t)    |              
++---------------+             +---------------------------------------+              
+                                                  |                                  
+                                                  v  GAE Compute                     
+                                      +-----------------------+                      
+                                      | Advantage A_t & Ret R |                      
+                                      +-----------------------+                      
+                                                  |                                  
+                                                  v  Mini-batch                      
+                                      +-----------------------+                      
+                                      |   PPO Loss & Update   |                      
+                                      +-----------------------+                      
+
+```
+
+---
+
+## 2. 张量 Shape 流动追踪 (Tensor Flow Table)
+
+| 节点/模块 | 输入 Shape | 输出 Shape | 说明 / 维度变化原因 |
+| --- | --- | --- | --- |
+| **Environment Observation** | - | `[4]` | CartPole 原始 4 维状态输入 |
+| **Batch Observation Layer** | `[4]` | `[1, 4]` | 扩展 Batch 维度以传入网络计算 |
+| **Shared Backbone Layer 1** | `[B, 4]` | `[B, 64]` | 线性映射 `Linear(4, 64)` + SiLU |
+| **Shared Backbone Layer 2** | `[B, 64]` | `[B, 64]` | 线性映射 `Linear(64, 64)` + SiLU |
+| **Actor Head Layer** | `[B, 64]` | `[B, 2]` | 计算离散动作 logits (`action_dim=2`) |
+| **Critic Head Layer** | `[B, 64]` | `[B, 1]` | 状态价值 $V(s)$ 标量预测 |
+| **Categorical Distribution** | `[B, 2]` | `Distribution` | 构建离散分布对象 |
+| **Action Sampling** | `Distribution` | `[B]` | 从动作概率分布中采样的动作索引 |
+| **Log Probability (`log_prob`)** | `Distribution`, `[B]` | `[B]` | 对应动作的对数概率 $\log \pi(a \mid s)$ |
+| **Value Squeeze (`squeeze(-1)`)** | `[B, 1]` | `[B]` | 压缩尾部维度，便于和 Return 进行 MSE Loss 计算 |
+| **Mini-batch Split** | `[N, 4]` (`N=2048`) | `[B_mb, 4]` (`B_mb=64`) | 训练时拆分为 $64$ 大小的 Mini-batch 数据块 |
+
+---
+
+## 3. 核心公式与代码映射
+
+| 数学原理 / 目标公式 | 对应代码实现名称 / 位置 | 代码表达式 |
+| --- | --- | --- |
+| **重要性采样比率**<br>
+
+<br>$r_t(\theta) = \frac{\pi_\theta(a_t \mid s_t)}{\pi_{\theta_{old}}(a_t \mid s_t)}$ | `PPOLoss.forward` | `ratio = torch.exp(new_logp - old_logp)` |
+| **PPO 裁剪目标**<br>
+
+<br>$\min(r_t A_t, \text{clip}(r_t, 1-\epsilon, 1+\epsilon)A_t)$ | `PPOLoss.forward` | `surr1 = ratio * advantages`<br>
+
+<br>`surr2 = torch.clamp(ratio, 1-eps, 1+eps) * adv`<br>
+
+<br>`policy_loss = -torch.min(surr1, surr2).mean()` |
+| **值函数损失**<br>
+
+<br>$L_{VF} = (V_\theta(s) - R_t)^2$ | `PPOLoss.forward` | `value_loss = nn.functional.mse_loss(values, returns)` |
+| **GAE 优势估算**<br>
+
+<br>$\delta_t = r_t + \gamma V(s_{t+1})(1-d_t) - V(s_t)$ | `RolloutBuffer.compute_gae_and_returns` | `delta = rew + gamma * next_val * next_non_term - val` |
+| **GAE 递归累加**<br>
+
+<br>$A_t = \delta_t + (\gamma \lambda)(1-d_t) A_{t+1}$ | `RolloutBuffer.compute_gae_and_returns` | `gae = delta + gamma * gae_lambda * next_non_term * gae` |
+| **优势值标准化**<br>
+
+<br>$\hat{A}_t = \frac{A_t - \mu_A}{\sigma_A + 10^{-8}}$ | `train_ppo` | `adv_t = (adv_t - adv_t.mean()) / (adv_t.std() + 1e-8)` |
