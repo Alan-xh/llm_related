@@ -74,7 +74,7 @@ def get_data_loaders(config: Config):
     """
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.5,), (0.5,))  # 归一化像素值至 [-1, 1], arg1 表示均值， arg2 表示标准差, (0.5) 表示单通道, RGB 图像为 (0.5, 0.5, 0.5)
+        transforms.Normalize((0.5,), (0.5,))  # 归一化像素值至 [-1, 1], arg1 表示均值， arg2 表示标准差, (0.5) 表示单通道, RGB 图像为 (0.5, 0.5, 0.5), ，匹配 Decoder 的 Tanh 输出
     ])
 
     train_dataset = datasets.MNIST(
