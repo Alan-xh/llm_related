@@ -1,3 +1,5 @@
+''' n元语法模型 n-gram Language Model '''
+
 import numpy as np
 from collections import defaultdict, Counter
 import math

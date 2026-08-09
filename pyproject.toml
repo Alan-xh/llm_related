@@ -13,6 +13,7 @@ dependencies = [
     "gradio>=5.23.1",
     "inflect>=7.5.0",
     "invisible-watermark>=0.2.0",
+    "matplotlib>=3.11.1",
     "onnx>=1.19.1",
     "onnxmltools>=1.14.0",
     "pydantic>=2.12.3",
