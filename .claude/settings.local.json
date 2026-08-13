@@ -3,7 +3,8 @@
     "allow": [
       "Bash(python3:*)",
       "Bash(python:*)",
-      "Bash(uv run:*)"
+      "Bash(uv run:*)",
+      "Bash(grep -E '\\\\.\\(md|py|ipynb\\)$')"
     ]
   }
 }

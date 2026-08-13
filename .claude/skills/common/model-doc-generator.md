@@ -1,3 +1,13 @@
+---
+name: model-doc-generator
+description: 按通用 PyTorch 规范生成模型与 Pipeline 的可执行代码及配套技术文档，强制模块化划分、Shape 标注与公式映射。当用户要求生成 PyTorch 模型代码或配套文档时使用。
+compatibility: Requires PyTorch
+license: MIT
+metadata:
+  version: "1.0.0"
+  author: "HDA-28"
+---
+
 # Skill: Model & Pipeline Documentation & Code Generator (Universal PyTorch Standard)
 
 ## Role & Goal
