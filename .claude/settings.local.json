@@ -4,7 +4,11 @@
       "Bash(python3:*)",
       "Bash(python:*)",
       "Bash(uv run:*)",
-      "Bash(grep -E '\\\\.\\(md|py|ipynb\\)$')"
+      "Bash(grep -E '\\\\.\\(md|py|ipynb\\)$')",
+      "Bash(for:*)",
+      "Bash(do python:*)",
+      "Bash(echo:*)",
+      "Bash(done:*)"
     ]
   }
 }
