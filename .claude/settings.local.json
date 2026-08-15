@@ -11,7 +11,11 @@
       "Bash(done:*)",
       "Bash(git mv *)",
       "Bash(sed -i '' '1s/.*/# 1.GAN/' \"cv_interview_note/08.生成模型/1.GAN/1.GAN.md\")",
-      "Bash(sed -i '' '1s/.*/# 3.扩散模型/' \"cv_interview_note/08.生成模型/3.扩散模型/3.扩散模型.md\")"
+      "Bash(sed -i '' '1s/.*/# 3.扩散模型/' \"cv_interview_note/08.生成模型/3.扩散模型/3.扩散模型.md\")",
+      "WebFetch(domain:arxiv.org)",
+      "WebSearch",
+      "Bash(git -C /Users/alan_xiao/Documents/projects/llm_related status --short)",
+      "Bash(git -C /Users/alan_xiao/Documents/projects/llm_related log --oneline -5)"
     ]
   }
 }
