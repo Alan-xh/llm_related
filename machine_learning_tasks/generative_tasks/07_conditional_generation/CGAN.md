@@ -1,5 +1,3 @@
-### Part 2: Markdown 技术说明文档
-
 # CGAN-Time-Series 技术架构与接口文档
 
 ## 1. 架构总览

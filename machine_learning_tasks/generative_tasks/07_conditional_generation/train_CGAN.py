@@ -1,35 +1,34 @@
 """
-Task ID        : SEQ-GEN-CGAN-001
-Task Name      : Conditional Time-Series Sequence Generation via CGAN / WGAN-GP
-Domain         : Time-Series / Generative Modeling / Sequential Analysis
-Architecture   : Conditional Generative Adversarial Network with WGAN-GP Penalty
-Reference      : - Mirza, M., & Osindero, S. (2014). Conditional Generative Adversarial Nets.
-                 - Arjovsky, M., Chintala, S., & Bottou, L. (2017). Wasserstein GAN.
-                 - Gulrajani, I., et al. (2017). Improved Training of Wasserstein GANs.
+任务 ID       : SEQ-GEN-CGAN-001
+任务名称     : 基于 CGAN / WGAN-GP 的条件时序序列生成
+领域         : 时间序列 / 生成模型 / 序列分析
+架构         : 带 WGAN-GP 梯度惩罚的条件生成对抗网络 (Conditional GAN)
+参考文献     : - Mirza, M., & Osindero, S. (2014). Conditional Generative Adversarial Nets.
+               - Arjovsky, M., Chintala, S., & Bottou, L. (2017). Wasserstein GAN.
+               - Gulrajani, I., et al. (2017). Improved Training of Wasserstein GANs.
 
-Core Concept & Mechanism:
-    This module implements a Conditional Generative Adversarial Network (CGAN) tailored for
-    multi-variate time-series generation. The Generator conditions on temporal features (cond)
-    and a global latent noise vector (z) to synthesize realistic temporal feature sequences.
-    The Discriminator evaluates sequence authenticity given the exact conditioning input.
-    Training stability is enforced via Wasserstein distance with Gradient Penalty (WGAN-GP).
+核心概念与机制:
+    本模块实现了一个专为多变量时间序列生成设计的条件生成对抗网络 (CGAN)。
+    生成器以时间特征 (cond) 和全局隐空间噪声向量 (z) 为条件，合成逼真的时间特征序列。
+    判别器在给定相同条件输入的情况下，评估序列的真实度。
+    模型训练的稳定性通过带有梯度惩罚的 Wasserstein 距离 (WGAN-GP) 来保障。
 
-Mathematical Formulations:
-    1. Wasserstein GAN Objective with Gradient Penalty (WGAN-GP):
+数学公式表达:
+    1. 带梯度惩罚的 Wasserstein GAN 目标函数 (WGAN-GP):
        min_G max_D  E_{x~P_r}[D(x|c)] - E_{\hat{x}~P_g}[D(\hat{x}|c)] - \lambda E_{\tilde{x}~P_{\tilde{x}}}[(||\nabla_{\tilde{x}} D(\tilde{x}|c)||_2 - 1)^2]
-       where \tilde{x} = \epsilon x + (1 - \epsilon) \hat{x} for \epsilon ~ U(0, 1).
+       其中 \tilde{x} = \epsilon x + (1 - \epsilon) \hat{x}，\epsilon ~ U(0, 1)。
 
-    2. Generator Initial Hidden State Projection:
+    2. 生成器初始隐状态投影:
        h_0 = MLP([z, c_0]),  c_0 = 0
-       LSTM Mapping: h_t, c_t = LSTM(c_t, (h_{t-1}, c_{t-1}))
-       Output Projection: x_t = Tanh(MLP(h_t))
+       LSTM 映射: h_t, c_t = LSTM(c_t, (h_{t-1}, c_{t-1}))
+       输出投影: x_t = Tanh(MLP(h_t))
 
-Data Input / Output Specification:
-    Real Data Tensor (x)     : Shape [B, L, D_in]   - Continuous time-series sequences.
-    Condition Tensor (c)     : Shape [B, L, D_cond] - Exogenous temporal driving features.
-    Latent Noise Tensor (z)  : Shape [B, D_z]      - Standard normal noise vectors ~ N(0, I).
-    Generated Data Output    : Shape [B, L, D_in]   - Synthesized sequences aligned with conditions.
-    Discriminator Score Output: Shape [B, 1]         - Scalar score (unbounded logit for WGAN-GP).
+数据输入 / 输出规范:
+    真实数据张量 (x)     : 形状 [B, L, D_in]   - 连续时间序列数据。
+    条件张量 (c)         : 形状 [B, L, D_cond] - 外生时间驱动特征。
+    隐空间噪声张量 (z)   : 形状 [B, D_z]      - 标准正态分布噪声向量 ~ N(0, I)。
+    生成数据输出         : 形状 [B, L, D_in]   - 与条件对齐的合成序列。
+    判别器评分输出       : 形状 [B, 1]        - 标量评分 (WGAN-GP 下的无界 Logit 值)。
 """
 
 import os
@@ -47,65 +46,65 @@ from tqdm import tqdm
 
 
 # ==============================================================================
-# 3. Hyperparameters & Global Configuration
+# 3. 超参数与全局配置
 # ==============================================================================
 
 class CGANConfig:
     """
-    Global Configuration class for Conditional Time-Series GAN.
-    Encapsulates data, model architecture, training loop, and logging parameters.
+    条件时序 GAN 的全局配置类。
+    封装了数据、模型架构、训练循环以及日志记录的相关参数。
     """
     def __init__(self):
-        # Data Parameters
+        # 数据参数
         self.data_path: str = "./data/train_data.npy"
         self.cond_data_path: str = "./data/conditions.npy"
-        self.seq_length: int = 50       # Sequence length L
-        self.input_dim: int = 10        # Target feature dimension D_in
-        self.cond_dim: int = 5          # Condition feature dimension D_cond
+        self.seq_length: int = 50       # 序列长度 L
+        self.input_dim: int = 10        # 目标特征维度 D_in
+        self.cond_dim: int = 5          # 条件特征维度 D_cond
 
-        # Generator Architecture
-        self.latent_dim: int = 100      # Latent noise dimension D_z
-        self.gen_hidden_dim: int = 256  # Generator LSTM hidden dimension
-        self.gen_num_layers: int = 3    # Number of LSTM layers in Generator
+        # 生成器架构参数
+        self.latent_dim: int = 100      # 隐空间噪声维度 D_z
+        self.gen_hidden_dim: int = 256  # 生成器 LSTM 隐层维度
+        self.gen_num_layers: int = 3    # 生成器 LSTM 层数
 
-        # Discriminator Architecture
-        self.dis_hidden_dim: int = 256  # Discriminator LSTM hidden dimension
-        self.dis_num_layers: int = 3    # Number of Bidirectional LSTM layers
-        self.dis_dropout: float = 0.2   # Dropout rate for Discriminator
+        # 判别器架构参数
+        self.dis_hidden_dim: int = 256  # 判别器 LSTM 隐层维度
+        self.dis_num_layers: int = 3    # 判别器双向 LSTM 层数
+        self.dis_dropout: float = 0.2   # 判别器 Dropout 比率
 
-        # Training Hyperparameters
+        # 训练超参数
         self.batch_size: int = 64
-        self.lr_g: float = 2e-4         # Learning rate for Generator
-        self.lr_d: float = 2e-4         # Learning rate for Discriminator
-        self.beta1: float = 0.5         # Adam beta1 hyperparameter
-        self.beta2: float = 0.9         # Adam beta2 hyperparameter
+        self.lr_g: float = 2e-4         # 生成器学习率
+        self.lr_d: float = 2e-4         # 判别器学习率
+        self.beta1: float = 0.5         # Adam 优化器 beta1 超参数
+        self.beta2: float = 0.9         # Adam 优化器 beta2 超参数
         self.weight_decay: float = 1e-5
         self.num_epochs: int = 200
-        self.n_critic: int = 1          # Number of D updates per G update
-        self.gp_weight: float = 10.0    # WGAN-GP Gradient Penalty coefficient lambda
-        self.label_smoothing: float = 0.1 # Label smoothing factor for real targets
+        self.n_critic: int = 1          # 每次更新 G 前判别器 D 的更新次数
+        self.gp_weight: float = 10.0    # WGAN-GP 梯度惩罚系数 lambda
+        self.label_smoothing: float = 0.1 # 真实目标的标签平滑因子
 
-        # Execution Environment
+        # 执行环境
         self.device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        # Logging and Persistence
+        # 日志与持久化
         self.save_dir: str = "./checkpoints_cgan"
         self.log_dir: str = "./logs_cgan"
         self.save_interval: int = 10
 
 
 # ==============================================================================
-# 4. Data Processing & Dataset Pipeline
+# 4. 数据处理与数据集流水线
 # ==============================================================================
 
 class ConditionalDataset(Dataset):
     """
-    Sliding-window Dataset for Conditional Sequential Data.
+    针对条件序列数据的滑动窗口数据集。
 
-    Inputs:
-        data_path (str): Path to target time-series numpy array [N_samples, D_in].
-        cond_path (str): Path to condition time-series numpy array [N_samples, D_cond].
-        seq_length (int): Sliding window temporal depth (L).
+    输入:
+        data_path (str): 目标时间序列 numpy 数组路径 [N_samples, D_in]。
+        cond_path (str): 条件时间序列 numpy 数组路径 [N_samples, D_cond]。
+        seq_length (int): 滑动窗口时间深度 (L)。
     """
     def __init__(self, data_path: str, cond_path: str, seq_length: int = 50):
         super().__init__()
@@ -115,14 +114,14 @@ class ConditionalDataset(Dataset):
             self.data = np.load(data_path)
             self.conditions = np.load(cond_path)
         else:
-            # Synthetic Data Generation for standalone execution
-            logging.warning(f"Data paths not found. Generating synthetic dummy data at runtime.")
+            # 数据路径不存在时生成合成虚拟数据，以便独立运行演示
+            logging.warning(f"未找到数据路径。将在运行时自动生成合成虚拟数据。")
             num_samples = 1000
             self.data = np.sin(np.linspace(0, 100, num_samples)[:, None] + np.arange(10)[None, :]).astype(np.float32)
             self.conditions = np.cos(np.linspace(0, 100, num_samples)[:, None] + np.arange(5)[None, :]).astype(np.float32)
 
         assert len(self.data) == len(self.conditions), (
-            f"Mismatch in temporal length: data ({len(self.data)}) vs conditions ({len(self.conditions)})"
+            f"时间长度不匹配: 数据 ({len(self.data)}) vs 条件 ({len(self.conditions)})"
         )
         self.num_windows = len(self.data) - self.seq_length + 1
 
@@ -131,11 +130,11 @@ class ConditionalDataset(Dataset):
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Extracts a sequence window of length `seq_length`.
+        提取长度为 `seq_length` 的序列窗口。
 
-        Outputs:
-            sequence (Tensor)  : Real temporal features, shape: [L, D_in]
-            condition (Tensor) : Temporal conditioning features, shape: [L, D_cond]
+        输出:
+            sequence (Tensor)  : 真实时间特征，形状: [L, D_in]
+            condition (Tensor) : 时间条件特征，形状: [L, D_cond]
         """
         sequence = self.data[idx : idx + self.seq_length]
         condition = self.conditions[idx : idx + self.seq_length]
@@ -143,49 +142,49 @@ class ConditionalDataset(Dataset):
 
 
 # ==============================================================================
-# 5. Core Sub-components / Encoder / Decoder
+# 5. 核心子组件 / 编码器 / 解码器
 # ==============================================================================
 
 class ConditionalGenerator(nn.Module):
     """
-    Conditional Recurrent Generator Module.
+    条件循环生成器模块。
 
-    Mathematical Transformation:
-        1. Context Vector Initializer:
-           h_0 = MLP_in([z, c_0])  where z ~ N(0, I), c_0 = c[:, 0, :]
-           Mapped Shape: [B, D_z + D_cond] -> [B, D_gen_hidden]
-           Expanded to Multi-layer LSTM state: [Num_Layers, B, D_gen_hidden]
+    数学变换过程:
+        1. 上下文向量初始化:
+           h_0 = MLP_in([z, c_0])，其中 z ~ N(0, I)，c_0 = c[:, 0, :]
+           映射形状: [B, D_z + D_cond] -> [B, D_gen_hidden]
+           扩展为多层 LSTM 状态: [Num_Layers, B, D_gen_hidden]
 
-        2. Recurrent Unrolling over Condition Sequence:
+        2. 条件序列上的循环展开 (Recurrent Unrolling):
            H, (h_n, c_n) = LSTM(C, (h_0, c_0_zeros))
-           where C shape: [B, L, D_cond], H shape: [B, L, D_gen_hidden]
+           其中 C 形状: [B, L, D_cond]，H 形状: [B, L, D_gen_hidden]
 
-        3. Feature Projection per Timestep:
+        3. 每个时间步的特征投影:
            x_t = Tanh(MLP_out(H_t))
-           where x_t shape: [B, D_in]
+           其中 x_t 形状: [B, D_in]
 
-    Args:
-        config (CGANConfig): Global model configuration instance.
+    参数:
+        config (CGANConfig): 全局模型配置实例。
 
-    Inputs:
-        z (Tensor): Latent noise tensor, shape: [B, D_z]
-        cond (Tensor): Temporal conditioning tensor, shape: [B, L, D_cond]
+    输入:
+        z (Tensor): 隐空间噪声张量，形状: [B, D_z]
+        cond (Tensor): 时间条件张量，形状: [B, L, D_cond]
 
-    Outputs:
-        output (Tensor): Synthesized time-series sequence, shape: [B, L, D_in]
+    输出:
+        output (Tensor): 合成的时间序列，形状: [B, L, D_in]
     """
     def __init__(self, config: CGANConfig):
         super().__init__()
         self.config = config
 
-        # Initial hidden state projector mapping z and c_0 to hidden dimension
+        # 将 z 和 c_0 映射到隐层维度的初始隐状态投影器
         self.fc_input = nn.Sequential(
             nn.Linear(config.latent_dim + config.cond_dim, config.gen_hidden_dim),
             nn.BatchNorm1d(config.gen_hidden_dim),
             nn.SiLU()
         )
 
-        # Autoregressive sequence driving block
+        # 自回归序列驱动模块
         self.lstm = nn.LSTM(
             input_size=config.cond_dim,
             hidden_size=config.gen_hidden_dim,
@@ -194,44 +193,44 @@ class ConditionalGenerator(nn.Module):
             dropout=0.1 if config.gen_num_layers > 1 else 0.0
         )
 
-        # Non-linear output feature projection head
+        # 非线性输出特征投影头
         self.fc_out = nn.Sequential(
             nn.Linear(config.gen_hidden_dim, config.gen_hidden_dim * 2),
             nn.SiLU(),
             nn.BatchNorm1d(config.gen_hidden_dim * 2),
             nn.Linear(config.gen_hidden_dim * 2, config.input_dim),
-            nn.Tanh()  # Bounds outputs to [-1, 1] range
+            nn.Tanh()  # 将输出约束在 [-1, 1] 范围内
         )
 
     def forward(self, z: torch.Tensor, cond: torch.Tensor) -> torch.Tensor:
-        # z shape: [B, D_z]
-        # cond shape: [B, L, D_cond]
+        # z 形状: [B, D_z]
+        # cond 形状: [B, L, D_cond]
         batch_size, seq_len, _ = cond.shape
 
-        # Extract initial condition timestep: [B, D_cond]
+        # 提取初始条件时间步: [B, D_cond]
         cond_first = cond[:, 0, :]
 
-        # Concatenate latent noise and initial condition: [B, D_z + D_cond]
+        # 拼接隐空间噪声与初始条件: [B, D_z + D_cond]
         init_input = torch.cat([z, cond_first], dim=-1)
 
-        # Compute initial hidden representation: [B, D_gen_hidden]
+        # 计算初始隐状态表示: [B, D_gen_hidden]
         init_state = self.fc_input(init_input)
 
-        # Expand hidden state across multi-layer LSTM dimensions: [Num_Layers, B, D_gen_hidden]
+        # 将隐状态扩展到多层 LSTM 维度: [Num_Layers, B, D_gen_hidden]
         h0 = init_state.unsqueeze(0).repeat(self.config.gen_num_layers, 1, 1)
-        c0 = torch.zeros_like(h0)  # Initial cell state set to zero
+        c0 = torch.zeros_like(h0)  # 初始细胞状态 (Cell State) 设为 0
 
-        # Propagate conditions through recurrent network: lstm_out shape -> [B, L, D_gen_hidden]
+        # 将条件输入传入循环网络: lstm_out 形状 -> [B, L, D_gen_hidden]
         lstm_out, _ = self.lstm(cond, (h0, c0))
 
-        # Flatten sequence and batch dimensions for parallel MLP projection
+        # 展平序列与批次维度，以便进行并行 MLP 投影
         # [B, L, D_gen_hidden] -> [B * L, D_gen_hidden]
         flat_lstm_out = lstm_out.reshape(-1, self.config.gen_hidden_dim)
 
-        # Project to input feature dimension: [B * L, D_in]
+        # 投影到输入特征维度: [B * L, D_in]
         flat_output = self.fc_out(flat_lstm_out)
 
-        # Reshape back to target sequence tensor: [B, L, D_in]
+        # 重构形状还原为目标序列张量: [B, L, D_in]
         output = flat_output.view(batch_size, seq_len, self.config.input_dim)
 
         return output
@@ -239,34 +238,34 @@ class ConditionalGenerator(nn.Module):
 
 class ConditionalDiscriminator(nn.Module):
     """
-    Bidirectional Recurrent Discriminator Module with Temporal Contextualization.
+    带有时间上下文特征的双向循环判别器模块。
 
-    Mathematical Transformation:
-        1. Feature-Condition Concatenation:
-           U_t = [X_t || C_t] for t in 1..L
-           Combined Tensor Shape: [B, L, D_in + D_cond]
+    数学变换过程:
+        1. 特征-条件拼接:
+           U_t = [X_t || C_t]，t 范围为 1..L
+           组合张量形状: [B, L, D_in + D_cond]
 
-        2. Bidirectional Sequence Encoding:
+        2. 双向序列编码:
            H_seq = BiLSTM(U)
-           where H_seq Shape: [B, L, 2 * D_dis_hidden]
+           其中 H_seq 形状: [B, L, 2 * D_dis_hidden]
 
-        3. Global Temporal Representation Aggregation:
-           H_final = H_seq[:, -1, :]  # Extracts final temporal slice
-           Shape: [B, 2 * D_dis_hidden]
+        3. 全局时间表示聚合:
+           H_final = H_seq[:, -1, :]  # 提取最后一个时间步切片
+           形状: [B, 2 * D_dis_hidden]
 
-        4. Validity Score Projection:
+        4. 真实度评分投影:
            Score = LeakyReLU(Linear(Dropout(LeakyReLU(Linear(H_final)))))
-           Output Score Shape: [B, 1]
+           输出评分形状: [B, 1]
 
-    Args:
-        config (CGANConfig): Global configuration parameters.
+    参数:
+        config (CGANConfig): 全局配置参数。
 
-    Inputs:
-        x (Tensor): Target real or synthetic time-series, shape: [B, L, D_in]
-        cond (Tensor): Temporal conditioning factors, shape: [B, L, D_cond]
+    输入:
+        x (Tensor): 目标真实或合成的时间序列，形状: [B, L, D_in]
+        cond (Tensor): 时间条件因子，形状: [B, L, D_cond]
 
-    Outputs:
-        score (Tensor): Validity logits/scores, shape: [B, 1]
+    输出:
+        score (Tensor): 真实度 Logits/评分，形状: [B, 1]
     """
     def __init__(self, config: CGANConfig):
         super().__init__()
@@ -274,7 +273,7 @@ class ConditionalDiscriminator(nn.Module):
 
         input_size = config.input_dim + config.cond_dim
 
-        # Bidirectional LSTM Encoder for long-range temporal modeling
+        # 用于长程时间建模的双向 LSTM 编码器
         self.lstm = nn.LSTM(
             input_size=input_size,
             hidden_size=config.dis_hidden_dim,
@@ -284,7 +283,7 @@ class ConditionalDiscriminator(nn.Module):
             dropout=config.dis_dropout if config.dis_num_layers > 1 else 0.0
         )
 
-        # High-capacity classifier head
+        # 高容量分类器头
         self.fc_out = nn.Sequential(
             nn.Linear(config.dis_hidden_dim * 2, config.dis_hidden_dim * 2),
             nn.LeakyReLU(0.2),
@@ -296,39 +295,38 @@ class ConditionalDiscriminator(nn.Module):
         )
 
     def forward(self, x: torch.Tensor, cond: torch.Tensor) -> torch.Tensor:
-        # x shape   : [B, L, D_in]
-        # cond shape: [B, L, D_cond]
+        # x 形状   : [B, L, D_in]
+        # cond 形状: [B, L, D_cond]
 
-        # Concatenate along feature dimension: [B, L, D_in + D_cond]
+        # 沿特征维度拼接: [B, L, D_in + D_cond]
         combined = torch.cat([x, cond], dim=-1)
 
-        # Process full sequence: lstm_out shape -> [B, L, 2 * D_dis_hidden]
+        # 处理完整序列: lstm_out 形状 -> [B, L, 2 * D_dis_hidden]
         lstm_out, _ = self.lstm(combined)
 
-        # Temporal Pooling: Select final sequence hidden vector: [B, 2 * D_dis_hidden]
+        # 时间池化: 选取序列最后一个隐层向量: [B, 2 * D_dis_hidden]
         last_out = lstm_out[:, -1, :]
 
-        # Compute validity score: score shape -> [B, 1]
+        # 计算真实度评分: score 形状 -> [B, 1]
         out = self.fc_out(last_out)
 
         return out
 
 
 # ==============================================================================
-# 6. Top-Level Model / Pipeline Wrapper
+# 6. 顶层模型 / 流水线封装
 # ==============================================================================
 
 class CGANPipeline:
     """
-    High-level Pipeline encapsulating Generator, Discriminator, Optimizers, and
-    WGAN-GP Training Step Logic.
+    高层流水线，封装了生成器、判别器、优化器以及 WGAN-GP 的训练步骤逻辑。
     """
     def __init__(self, config: CGANConfig):
         self.config = config
         self.generator = ConditionalGenerator(config).to(config.device)
         self.discriminator = ConditionalDiscriminator(config).to(config.device)
 
-        # AdamW Optimizers with momentum hyperparameter tuning
+        # 带动量超参数调优的 AdamW 优化器
         self.optimizer_g = optim.AdamW(
             self.generator.parameters(),
             lr=config.lr_g,
@@ -342,38 +340,38 @@ class CGANPipeline:
             weight_decay=config.weight_decay
         )
 
-        # Binary Cross Entropy with Logits Loss
+        # 带 Logits 的二元交叉熵损失函数
         self.bce_criterion = nn.BCEWithLogitsLoss()
 
     def gradient_penalty(self, real_data: torch.Tensor, fake_data: torch.Tensor, cond: torch.Tensor) -> torch.Tensor:
         """
-        Computes WGAN-GP Gradient Penalty to enforce 1-Lipschitz continuity constraint.
+        计算 WGAN-GP 梯度惩罚项，以强制满足 1-Lipschitz 连续性约束。
 
-        Formula:
+        公式:
             GP = E [(|| \nabla_{\tilde{x}} D(\tilde{x}, cond) ||_2 - 1)^2]
-            where \tilde{x} = \epsilon * real + (1 - \epsilon) * fake
+            其中 \tilde{x} = \epsilon * real + (1 - \epsilon) * fake
 
-        Inputs:
+        输入:
             real_data (Tensor): [B, L, D_in]
             fake_data (Tensor): [B, L, D_in]
             cond (Tensor)     : [B, L, D_cond]
 
-        Outputs:
-            penalty (Tensor)  : Scalar gradient penalty tensor.
+        输出:
+            penalty (Tensor)  : 标量梯度惩罚张量。
         """
         batch_size = real_data.size(0)
 
-        # Uniform random sample weight: [B, 1, 1]
+        # 均匀分布随机采样权重: [B, 1, 1]
         epsilon = torch.rand(batch_size, 1, 1, device=self.config.device)
         epsilon = epsilon.expand_as(real_data)
 
-        # Convex combination interpolation: [B, L, D_in]
+        # 凸组合插值: [B, L, D_in]
         interpolated = (epsilon * real_data + (1 - epsilon) * fake_data).requires_grad_(True)
 
-        # Discriminator pass on interpolated inputs: [B, 1]
+        # 判别器对插值输入进行前向传播: [B, 1]
         disc_interpolated = self.discriminator(interpolated, cond)
 
-        # Calculate exact gradient with respect to interpolated features
+        # 计算关于插值特征的精确梯度
         gradients = torch.autograd.grad(
             outputs=disc_interpolated,
             inputs=interpolated,
@@ -383,13 +381,13 @@ class CGANPipeline:
             only_inputs=True
         )[0]
 
-        # Flatten gradients per sample: [B, L * D_in]
+        # 展平每个样本的梯度: [B, L * D_in]
         gradients = gradients.view(batch_size, -1)
 
-        # L2 norm calculation along feature dimensions: [B]
+        # 沿特征维度计算 L2 范数: [B]
         gradient_norm = gradients.norm(2, dim=1)
 
-        # Compute squared distance penalty from 1
+        # 计算偏离 1 的平方距离惩罚
         penalty = ((gradient_norm - 1.0) ** 2).mean()
 
         return penalty
@@ -398,26 +396,26 @@ class CGANPipeline:
         self, real_data: torch.Tensor, cond: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        Executes a single optimization step for the Discriminator using WGAN-GP.
+        使用 WGAN-GP 执行判别器的单步优化。
         """
         self.optimizer_d.zero_grad()
         batch_size = real_data.size(0)
 
-        # Sample Latent Noise and Generate Fake Data
+        # 采样隐空间噪声并生成假数据
         z = torch.randn(batch_size, self.config.latent_dim, device=self.config.device)
         fake_data = self.generator(z, cond).detach()
 
-        # Compute Discriminator Predictions
+        # 计算判别器预测结果
         real_validity = self.discriminator(real_data, cond)  # [B, 1]
         fake_validity = self.discriminator(fake_data, cond)  # [B, 1]
 
-        # WGAN Critic Loss: Maximize D(real) - D(fake) <=> Minimize D(fake) - D(real)
+        # WGAN  Critic 损失: 最大化 D(real) - D(fake) <=> 最小化 D(fake) - D(real)
         d_loss_wasserstein = fake_validity.mean() - real_validity.mean()
 
-        # Calculate Gradient Penalty
+        # 计算梯度惩罚
         gp = self.gradient_penalty(real_data, fake_data, cond)
 
-        # Total Loss with Lambda Weighting
+        # 带 Lambda 权重的总损失
         total_d_loss = d_loss_wasserstein + self.config.gp_weight * gp
 
         total_d_loss.backward()
@@ -428,21 +426,21 @@ class CGANPipeline:
 
     def train_generator_step(self, cond: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Executes a single optimization step for the Generator.
+        执行生成器的单步优化。
         """
         self.optimizer_g.zero_grad()
         batch_size = cond.size(0)
 
-        # Sample fresh latent noise
+        # 重新采样全新的隐空间噪声
         z = torch.randn(batch_size, self.config.latent_dim, device=self.config.device)
 
-        # Forward pass through Generator
+        # 生成器前向传播
         fake_data = self.generator(z, cond)  # [B, L, D_in]
 
-        # Evaluate synthesized data on Discriminator
+        # 在判别器中评估合成数据
         fake_validity = self.discriminator(fake_data, cond)  # [B, 1]
 
-        # WGAN Generator Loss: Maximize D(G(z|c)) <=> Minimize -D(G(z|c))
+        # WGAN 生成器损失: 最大化 D(G(z|c)) <=> 最小化 -D(G(z|c))
         g_loss = -fake_validity.mean()
 
         g_loss.backward()
@@ -453,19 +451,19 @@ class CGANPipeline:
 
 
 # ==============================================================================
-# 7. Loss & Metrics
+# 7. 损失与指标计算
 # ==============================================================================
 
 def compute_sequence_metrics(real_seq: torch.Tensor, fake_seq: torch.Tensor) -> Dict[str, float]:
     """
-    Calculates statistical similarity metrics between real and generated sequence batches.
+    计算真实序列批次与生成序列批次之间的统计相似度指标。
 
-    Inputs:
+    输入:
         real_seq (Tensor): [B, L, D_in]
         fake_seq (Tensor): [B, L, D_in]
 
-    Outputs:
-        metrics (Dict[str, float]): Computed MSE and MAE metrics.
+    输出:
+        metrics (Dict[str, float]): 计算出的 MSE 和 MAE 指标字典。
     """
     with torch.no_grad():
         mse = nn.functional.mse_loss(fake_seq, real_seq).item()
@@ -474,12 +472,12 @@ def compute_sequence_metrics(real_seq: torch.Tensor, fake_seq: torch.Tensor) -> 
 
 
 # ==============================================================================
-# 8. Training/Inference Execution & Entry Point
+# 8. 训练/推理执行与入口函数
 # ==============================================================================
 
 def main():
     """
-    Main Execution Entry Point for Dataset Loading, Model Setup, and Training Loop.
+    数据集加载、模型建立与训练循环的主执行入口。
     """
     config = CGANConfig()
 
@@ -497,25 +495,25 @@ def main():
     logger = logging.getLogger("CGAN_Training")
     writer = SummaryWriter(config.log_dir)
 
-    logger.info("Initializing Dataset and DataLoader...")
+    logger.info("正在初始化数据集与 DataLoader...")
     dataset = ConditionalDataset(config.data_path, config.cond_data_path, config.seq_length)
     dataloader = DataLoader(
         dataset,
         batch_size=config.batch_size,
         shuffle=True,
-        num_workers=0,  # Set to 0 for maximum cross-platform compatibility
+        num_workers=0,  # 设为 0 以确保最佳跨平台兼容性
         pin_memory=True if torch.cuda.is_available() else False,
         drop_last=True
     )
-    logger.info(f"Dataset successfully created. Total sequence windows: {len(dataset)}")
+    logger.info(f"数据集创建成功。总序列窗口数: {len(dataset)}")
 
-    logger.info("Initializing CGAN Pipeline and Sub-modules...")
+    logger.info("正在初始化 CGAN 流水线与子模块...")
     pipeline = CGANPipeline(config)
 
-    logger.info(f"Generator Params    : {sum(p.numel() for p in pipeline.generator.parameters()):,}")
-    logger.info(f"Discriminator Params: {sum(p.numel() for p in pipeline.discriminator.parameters()):,}")
+    logger.info(f"生成器参数量     : {sum(p.numel() for p in pipeline.generator.parameters()):,}")
+    logger.info(f"判别器参数量     : {sum(p.numel() for p in pipeline.discriminator.parameters()):,}")
 
-    logger.info("Starting Execution Loop...")
+    logger.info("开始执行训练循环...")
     for epoch in range(config.num_epochs):
         pipeline.generator.train()
         pipeline.discriminator.train()
@@ -529,12 +527,12 @@ def main():
             cond = cond.to(config.device)
 
             # ------------------------------------------------------------------
-            # 1. Update Discriminator
+            # 1. 更新判别器
             # ------------------------------------------------------------------
             d_total_loss, d_wasserstein, real_score, fake_score = pipeline.train_discriminator_step(real_data, cond)
 
             # ------------------------------------------------------------------
-            # 2. Update Generator (every n_critic steps)
+            # 2. 更新生成器 (每 n_critic 步更新一次)
             # ------------------------------------------------------------------
             if batch_idx % config.n_critic == 0:
                 g_loss, fake_data = pipeline.train_generator_step(cond)
@@ -561,9 +559,9 @@ def main():
 
         epoch_d_loss = running_d_loss / len(dataloader)
         epoch_g_loss = running_g_loss / len(dataloader)
-        logger.info(f"Epoch [{epoch + 1}/{config.num_epochs}] Finished -> Avg D_Loss: {epoch_d_loss:.6f}, Avg G_Loss: {epoch_g_loss:.6f}")
+        logger.info(f"Epoch [{epoch + 1}/{config.num_epochs}] 完成 -> 平均 D 损失: {epoch_d_loss:.6f}, 平均 G 损失: {epoch_g_loss:.6f}")
 
-        # Model Checkpoint Persistence
+        # 模型检查点保存
         if (epoch + 1) % config.save_interval == 0:
             ckpt_path = os.path.join(config.save_dir, f"cgan_epoch_{epoch + 1}.pt")
             torch.save({
@@ -573,10 +571,10 @@ def main():
                 "optimizer_g_state_dict": pipeline.optimizer_g.state_dict(),
                 "optimizer_d_state_dict": pipeline.optimizer_d.state_dict(),
             }, ckpt_path)
-            logger.info(f"Checkpoint successfully saved to {ckpt_path}")
+            logger.info(f"检查点已成功保存至 {ckpt_path}")
 
     writer.close()
-    logger.info("Training pipeline execution completed.")
+    logger.info("训练流水线执行完毕。")
 
 
 if __name__ == "__main__":
