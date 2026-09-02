@@ -1,4 +1,3 @@
-
 # 自编码器 (Autoencoder, AE)
 
 ## 1. 算法原理
@@ -18,17 +17,35 @@
 
 $$z = f_\theta(x) = \sigma(W_e x + b_e)$$
 
+* z: 低维隐空间代码（Latent Space Vector）
+* $f_\theta$: 编码器映射函数，由参数 $\theta$ 参数化
+* $\theta(西塔)$: 编码器的参数集合
+* x: 高维输入数据向量
+* $\sigma(西格玛)$: 激活函数（如 Sigmoid、ReLU 等）
+* $W_e$: 编码器的权重矩阵（Weight matrix of Encoder）
+* $b_e$: 编码器的偏置向量（Bias vector of Encoder）
 
 2. **解码过程**：
 
 $$\hat{x} = g_\phi(z) = \sigma(W_d z + b_d)$$
 
+* $\hat{x}$: 重构的输入数据向量
+* $g_\phi$: 解码器映射函数，由参数 $\phi$ 参数化
+* $\phi(斐/斐尔)$: 解码器的参数集合
+* z: 低维隐空间代码
+* $\sigma(西格玛)$: 激活函数（如 Sigmoid、ReLU 等）
+* $W_d$: 解码器的权重矩阵（Weight matrix of Decoder）
+* $b_d$: 解码器的偏置向量（Bias vector of Decoder）
 
 3. **损失函数 (MSE Loss)**：
 
-$$L(x, \hat{x}) = \frac{1}{2} \|x - \hat{x}\|_2^2$$
+$$L(x, \hat{x}) = \frac{1}{2} \Vert{}x - \hat{x}\Vert{}_2^2$$
 
-
+* $L(x, \hat{x})$: 损失函数值（重构误差/损失）
+* x: 原始高维输入数据向量
+* $\hat{x}$: 解码重构的输出向量
+* $\Vert{}\cdot\Vert{}_2$: $L_2$ 范数（欧几里得距离/欧氏范数）
+* $\Vert{}\cdot\Vert{}_2^2$: $L_2$ 范数的平方（均方误差的基础计算部分）
 
 ---
 
@@ -36,8 +53,9 @@ $$L(x, \hat{x}) = \frac{1}{2} \|x - \hat{x}\|_2^2$$
 
 ```
  [ 高维输入 x ]  --->  [ 编码器 Encoder ]  --->  [ 瓶颈层 Latent z ]
-                                                       |
+                                                         |
  [ 重构输出 x_hat ] <--  [ 解码器 Decoder ]  <-----------+
+
 
 ```
 
@@ -86,5 +104,5 @@ if __name__ == "__main__":
 
     print(f"训练 100 轮后重构 Loss: {loss.item():.4f}")
 
-```
 
+```

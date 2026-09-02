@@ -6,12 +6,13 @@
 
 ```
  [ 输入 X ] ---> [ 初始树 F_0 ] ---> 算残差 r_1 = y - F_0(X)
-                                            |
-                                            v
-                                 [ 树 T_1 拟合残差 r_1 ] ---> 更新 F_1 = F_0 + gamma * T_1
-                                                                        |
-                                                                        v
-                                                             [ 树 T_2 拟合残差 r_2 ] ...
+                            |
+                            v
+                   [ 树 T_1 拟合残差 r_1 ] ---> 更新 F_1 = F_0 + gamma * T_1
+                                           |
+                                           v
+                                   [ 树 T_2 拟合残差 r_2 ] ...
+
 
 ```
 
@@ -27,20 +28,41 @@
 
 $$F_0(\mathbf{x}) = \arg\min_\gamma \sum_{i=1}^{m} L(y_i, \gamma)$$
 
+* $F_0$: 初始的常数模型
+* $\mathbf{x}$: 输入特征向量
+* $\gamma$(伽马): 模型参数或叶子节点的最优预测值
+* $L$: 损失函数
+* $y_i$: 第 $i$ 个样本的真实标签
+* $i$: 样本索引
+* $m$: 样本总数
 
 2. **对于 $m = 1$ 到 $M$ 棵树**：
 a. **计算伪残差 (负梯度)**：
 
 $$r_{im} = -\left[ \frac{\partial L(y_i, F(\mathbf{x}_i))}{\partial F(\mathbf{x}_i)} \right]_{F(\mathbf{x})=F_{m-1}(\mathbf{x})}$$
 
-
+* $r_{im}$: 第 $m$ 棵树下第 $i$ 个样本的伪残差（负梯度）
+* $i$: 样本索引
+* $m$: 第 $m$ 棵树（迭代轮数）
+* $L$: 损失函数
+* $y_i$: 第 $i$ 个样本的真实标签
+* $F(\mathbf{x}_i)$: 模型在样本 $\mathbf{x}_i$ 处的预测值
+* $\mathbf{x}_i$: 第 $i$ 个样本的输入特征向量
+* $F_{m-1}(\mathbf{x})$: 前 $m-1$ 棵树组合成的集成模型
 
 b. **对残差 fit 一棵决策树**，得到叶子区域 $R_{jm}$。
 c. **更新集成模型**：
 
 $$F_m(\mathbf{x}) = F_{m-1}(\mathbf{x}) + \nu \sum_{j} \gamma_{jm} I(\mathbf{x} \in R_{jm})$$
 
-
+* $F_m(\mathbf{x})$: 更新后的第 $m$ 轮集成模型
+* $F_{m-1}(\mathbf{x})$: 前 $m-1$ 轮的集成模型
+* $\nu$(纽): 学习率（步长缩减系数）
+* $j$: 叶子节点的索引
+* $\gamma_{jm}$(伽马): 第 $m$ 棵树中第 $j$ 个叶子节点的最优预测值
+* $I$: 指示函数
+* $\mathbf{x}$: 输入特征向量
+* $R_{jm}$: 第 $m$ 棵树的第 $j$ 个叶子节点区域
 
 对于均方损失 $L(y, F) = \frac{1}{2}(y - F)^2$，负梯度恰好即为标准残差 $y_i - F_{m-1}(\mathbf{x}_i)$。
 
@@ -93,4 +115,3 @@ if __name__ == "__main__":
     print("Sklearn GBDT MSE:", mean_squared_error(y, sk_gbdt.predict(X)))
 
 ```
-

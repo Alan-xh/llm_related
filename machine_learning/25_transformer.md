@@ -1,4 +1,3 @@
-
 # Transformer 模型
 
 ## 1. 算法原理
@@ -20,22 +19,61 @@ Transformer 抛弃了传统 RNN/CNN 的循环与卷积结构，完全依赖**自
 
 给定输入特征矩阵 $X \in \mathbb{R}^{N \times d}$，通过线性变换得到 Query ($Q$), Key ($K$), Value ($V$):
 
+* X: 输入特征矩阵/序列嵌入矩阵
+* N: 序列长度（Token 数量）
+* d: 特征维度/嵌入维度
+* $\mathbb{R}^{N \times d}$: 维度为 $N \times d$ 的实数空间矩阵集合
 
 $$Q = X W_Q, \quad K = X W_K, \quad V = X W_V$$
 
+* Q: 查询矩阵 (Query)
+* K: 键矩阵 (Key)
+* V: 值矩阵 (Value)
+* X: 输入特征矩阵
+* $W_Q$: 查询矩阵的可学习权重参数矩阵
+* $W_K$: 键矩阵的可学习权重参数矩阵
+* $W_V$: 值矩阵的可学习权重参数矩阵
+
 注意力权重与最终输出计算公式为：
 
-
 $$\text{Attention}(Q, K, V) = \text{softmax}\left( \frac{Q K^T}{\sqrt{d_k}} \right) V$$
+
+* $\text{Attention}(Q, K, V)$: 缩放点积注意力的计算结果输出矩阵
+* Q: 查询矩阵 (Query)
+* K: 键矩阵 (Key)
+* $K^T$: 键矩阵的转置矩阵
+* V: 值矩阵 (Value)
+* $d_k$: 键向量/查询向量的维度（即 $Q$ 和 $K$ 的列数），开根号用于缩放点积结果，防止梯度消失
+* $\text{softmax}$: 归一化指数函数，将注意力得分转化为和为 1 的概率分布
 
 ### 2.2 多头注意力 (Multi-Head Attention)
 
 将 $Q, K, V$ 投影到 $h$ 个不同的子空间：
 
+* Q: 查询矩阵 (Query)
+* K: 键矩阵 (Key)
+* V: 值矩阵 (Value)
+* h: 注意力头的数量
 
 $$\text{head}_i = \text{Attention}(Q W_i^Q, K W_i^K, V W_i^V)$$
 
+* $\text{head}_i$: 第 $i$ 个注意力头计算出的输出注意力特征
+* $\text{Attention}$: 缩放点积注意力函数
+* Q: 查询矩阵 (Query)
+* K: 键矩阵 (Key)
+* V: 值矩阵 (Value)
+* $W_i^Q$: 第 $i$ 个注意力头对应的 Query 投影权重矩阵
+* $W_i^K$: 第 $i$ 个注意力头对应的 Key 投影权重矩阵
+* $W_i^V$: 第 $i$ 个注意力头对应的 Value 投影权重矩阵
+* i: 注意力头的索引标记 ($i = 1, 2, \dots, h$)
+
 $$\text{MultiHead}(Q, K, V) = \text{Concat}(\text{head}_1, \dots, \text{head}_h) W^O$$
+
+* $\text{MultiHead}(Q, K, V)$: 多头注意力机制最终输出结果
+* $\text{Concat}$: 拼接操作，将所有注意力头的输出按列拼接在一起
+* $\text{head}_1, \dots, \text{head}_h$: 第 1 到第 $h$ 个注意力头的输出结果
+* h: 注意力头的总数量
+* $W^O$: 多头拼接后的线性变换线性输出权重矩阵
 
 ---
 
@@ -66,6 +104,7 @@ $$\text{MultiHead}(Q, K, V) = \text{Concat}(\text{head}_1, \dots, \text{head}_h)
                         ^
                         |
               [ 输入嵌入 + 位置编码 ]
+
 
 ```
 
@@ -111,5 +150,5 @@ if __name__ == "__main__":
     print("注意力输出矩阵形状:", out.shape)
     print("注意力权重矩阵 [0]:\n", weights.round(3))
 
-```
 
+```

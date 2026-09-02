@@ -1,26 +1,61 @@
 # 11. k-均值聚类 (k-Means Clustering)
 
 ## 1. 核心原理
+
 k-均值聚类是一种无监督学习算法，用于将未标记的数据集划分为 $k$ 个不同的簇（Clusters）。其核心原理是：
+
 1. 随机指定 $k$ 个初始聚类中心（Centroids）。
 2. 将每个数据点分配给距离其最近的聚类中心。
 3. 根据分配给每个簇的数据点更新聚类中心（计算均值）。
 4. 重复步骤2与3，直到聚类中心不再显著改变或达到最大迭代次数（收敛）。
+
+* k: 聚类簇的数量/设定的类别数
 
 目标是最小化所有簇内数据点到对应簇中心的平方距离之和（即簇内平方和 / WCSS）。
 
 ## 2. 算法与数学公式
 
 ### 2.1 距离度量
+
 常用欧几里得距离（Euclidean Distance）度量数据点 $\mathbf{x}_i$ 与聚类中心 $\boldsymbol{\mu}_j$ 之间的距离：
+
+
 $$d(\mathbf{x}_i, \boldsymbol{\mu}_j) = \Vert{}\mathbf{x}_i - \boldsymbol{\mu}_j\Vert{}_2 = \sqrt{\sum_{d=1}^{D} (x_{id} - \mu_{jd})^2}$$
 
+* d(·): 距离函数/距离测度
+* $\mathbf{x}_i$: 第 $i$ 个数据点（向量）
+* $\boldsymbol{\mu}$(缪)_j: 第 $j$ 个聚类中心的坐标向量
+* $\Vert{}\cdot{}\Vert{}_2$: L2范数（欧几里得范数 / 欧氏距离）
+* D: 特征维度/数据的空间维度数
+* d: 特征维度的索引变量
+* $x_{id}$: 第 $i$ 个数据点在第 $d$ 个维度上的特征值
+* $\mu$(缪)_{jd}: 第 $j$ 个聚类中心在第 $d$ 个维度上的特征值
+
 ### 2.2 目标函数 (Inertia / WCSS)
+
 $$J = \sum_{j=1}^{k} \sum_{i \in C_j} \Vert{}\mathbf{x}_i - \boldsymbol{\mu}_j\Vert{}^2$$
+
+
 其中 $C_j$ 表示第 $j$ 个簇的数据点集合，$\boldsymbol{\mu}_j$ 是该簇的中心点。
 
+* J: 目标函数值（簇内平方和 / WCSS / Inertia）
+* k: 聚类簇的总数
+* j: 簇的索引变量（$j = 1, 2, \dots, k$）
+* $C_j$: 第 $j$ 个簇包含的数据点集合
+* i: 数据点的索引变量
+* $\mathbf{x}_i$: 属于簇 $C_j$ 的第 $i$ 个数据点（向量）
+* $\boldsymbol{\mu}$(缪)_j: 第 $j$ 个簇的中心点向量
+* $\Vert{}\cdot{}\Vert{}^2$: 欧几里得距离的平方/L2范数的平方
+
 ### 2.3 质心更新公式
+
 $$\boldsymbol{\mu}_j = \frac{1}{\vert{}C_j\vert{}} \sum_{i \in C_j} \mathbf{x}_i$$
+
+* $\boldsymbol{\mu}$(缪)_j: 更新后的第 $j$ 个簇的质心（中心点向量）
+* $\vert{}C_j\vert{}$: 第 $j$ 个簇包含的数据点总数量（集合 $C_j$ 的势/大小）
+* i: 数据点的索引变量
+* $C_j$: 第 $j$ 个簇的数据点集合
+* $\mathbf{x}_i$: 属于簇 $C_j$ 的第 $i$ 个数据点（向量）
 
 ## 3. ASCII 流程框架图
 
@@ -51,9 +86,11 @@ v
 |        完成聚类         |
 +-------------------------+
 
+
 ```
 
 ## 4. NumPy 纯代码实现
+
 ```python
 import numpy as np
 
@@ -106,5 +143,5 @@ if __name__ == "__main__":
     labels = kmeans.fit(X)
     print("Clusters assigned, counts per cluster:", np.bincount(labels))
 
-```
 
+```

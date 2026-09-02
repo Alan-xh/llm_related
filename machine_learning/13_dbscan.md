@@ -1,4 +1,3 @@
-
 # 13. DBSCAN (基于密度的聚类算法)
 
 ## 1. 核心原理
@@ -22,15 +21,44 @@ DBSCAN（Density-Based Spatial Clustering of Applications with Noise）是一种
 
 对数据点 $\mathbf{p} \in D$，其 $\epsilon$-邻域定义为：
 
-
 $$N_\epsilon(\mathbf{p}) = \{ \mathbf{q} \in D \mid \text{dist}(\mathbf{p}, \mathbf{q}) \le \epsilon \}$$
+
+* $N_\epsilon(\mathbf{p})$: 数据点 $\mathbf{p}$ 的 $\epsilon$-邻域集合
+* $\epsilon(艾普西隆)$: 邻域半径超参数
+* $\mathbf{p}$: 数据集中的指定数据点
+* $D$: 整个数据集
+* $\mathbf{q}$: 数据集中任意待判定的数据点
+* $\text{dist}(\mathbf{p}, \mathbf{q})$: 数据点 $\mathbf{p}$ 与数据点 $\mathbf{q}$ 之间的距离度量（如欧氏距离）
 
 ### 2.2 密度相关概念
 
 * **核心点判定**: $\vert{}N_\epsilon(\mathbf{p})\vert{} \ge MinPts$
+
+* $\vert{}N_\epsilon(\mathbf{p})\vert{}$: 数据点 $\mathbf{p}$ 的 $\epsilon$-邻域内包含的数据点数量
+* $\epsilon(艾普西隆)$: 邻域半径超参数
+* $\mathbf{p}$: 待认定的数据点
+* $MinPts$: 形成核心点所需的最小数据点数量超参数
+
 * **直接密度可达 (Directly Density-Reachable)**: 若 $\mathbf{q} \in N_\epsilon(\mathbf{p})$ 且 $\mathbf{p}$ 是核心点，则 $\mathbf{q}$ 从 $\mathbf{p}$ 直接密度可达。
+
+* $\mathbf{q}$: 目标数据点
+* $N_\epsilon(\mathbf{p})$: 数据点 $\mathbf{p}$ 的 $\epsilon$-邻域集合
+* $\epsilon(艾普西隆)$: 邻域半径超参数
+* $\mathbf{p}$: 核心数据点
+
 * **密度可达 (Density-Reachable)**: 存在序列 $\mathbf{p}_1, \mathbf{p}_2, \dots, \mathbf{p}_n$，其中 $\mathbf{p}_1 = \mathbf{p}, \mathbf{p}_n = \mathbf{q}$，满足 $\mathbf{p}_{i+1}$ 从 $\mathbf{p}_i$ 直接密度可达。
+
+* $\mathbf{p}_1, \mathbf{p}_2, \dots, \mathbf{p}_n$: 密度可达路径上的点序列
+* $\mathbf{p}$: 起始核心点
+* $\mathbf{q}$: 终点数据点
+* $\mathbf{p}_i$: 序列中第 $i$ 个数据点
+* $\mathbf{p}_{i+1}$: 序列中第 $i+1$ 个数据点
+
 * **密度相连 (Density-Connected)**: 存在点 $\mathbf{o}$，使得 $\mathbf{p}$ 和 $\mathbf{q}$ 均从 $\mathbf{o}$ 密度可达。
+
+* $\mathbf{o}$: 作为中间桥梁的数据点
+* $\mathbf{p}$: 目标数据点1
+* $\mathbf{q}$: 目标数据点2
 
 ## 3. ASCII 流程框架图
 
@@ -57,6 +85,7 @@ $$N_\epsilon(\mathbf{p}) = \{ \mathbf{q} \in D \mid \text{dist}(\mathbf{p}, \mat
           | 将邻域内点加入队列 |
           | 广度优先扩展簇 C    |
           +--------------------+
+
 
 ```
 
@@ -116,5 +145,5 @@ if __name__ == "__main__":
     dbscan = DBSCANFromScratch(eps=3.0, min_samples=2)
     print("DBSCAN Cluster Labels:", dbscan.fit_predict(X))
 
-```
 
+```

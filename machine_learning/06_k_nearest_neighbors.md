@@ -4,20 +4,23 @@
 
 KNN 是一种基于实例（Instance-based）的惰性学习（Lazy Learning）算法。它没有显式的训练阶段，对于未知输入，利用特征空间中与该样本距离最近的 $K$ 个已知训练样本，通过多数投票或距离加权的方式进行分类或回归。
 
+* K: 选取的最近邻样本的数量
+
 ```
-                       (未知测试样本 ?)
+                        (未知测试样本 ?)
                             /   |   \
                            /    |    \ (计算欧氏距离)
                           v     v     v
                      +-------+-------+-------+
                      | 近邻1 | 近邻2 | 近邻3 |  (K=3)
                      +-------+-------+-------+
-                         |       |       |
-                         v       v       v
-                       类别 A  类别 A  类别 B
-                         \       |       /
-                          v      v      v
+                          |       |       |
+                          v       v       v
+                        类别 A  类别 A  类别 B
+                          \       |       /
+                           v      v      v
                      [ 多数表决: 归为类别 A ]
+
 
 ```
 
@@ -29,15 +32,36 @@ KNN 是一种基于实例（Instance-based）的惰性学习（Lazy Learning）�
 
 $$D(\mathbf{x}, \mathbf{y}) = \left( \sum_{i=1}^{n} \vert{}x_i - y_i\vert{}^p \right)^{\frac{1}{p}}$$
 
+* D(x, y): 样本向量 $\mathbf{x}$ 与 $\mathbf{y}$ 之间的闵可夫斯基距离
+* x: 样本向量 $\mathbf{x}$
+* y: 样本向量 $\mathbf{y}$
+* i: 特征维度的索引
+* n: 特征的总维度/特征数量
+* x_i: 样本 $\mathbf{x}$ 在第 $i$ 个维度上的特征值
+* y_i: 样本 $\mathbf{y}$ 在第 $i$ 个维度上的特征值
+* p: 距离度量的阶数参数
+
 * $p=1$：曼哈顿距离（Manhattan Distance）
+
+* p: 距离度量阶数，取值为 1
+
 * $p=2$：欧氏距离（Euclidean Distance）
+
+* p: 距离度量阶数，取值为 2
 
 ### 2.2 决策规则
 
 分类预测函数：
 
-
 $$y = \arg\max_c \sum_{\mathbf{x}_i \in N_K(\mathbf{x})} I(y_i = c)$$
+
+* y: 未知测试样本 $\mathbf{x}$ 的预测类别
+* argmax_c: 使得后方表达式达到最大值时对应的类别 $c$
+* c: 候选的类别标签
+* x_i: 属于测试样本 $\mathbf{x}$ 的 $K$ 个最近邻集合中的第 $i$ 个训练样本
+* N_K(x): 测试样本 $\mathbf{x}$ 的 $K$ 个最近邻样本构成的集合
+* I(·): 指示函数（Indicator Function），当条件成立时取值为 1，否则为 0
+* y_i: 训练样本 $\mathbf{x}_i$ 的真实类别标签
 
 ---
 
@@ -83,5 +107,5 @@ if __name__ == "__main__":
     sk_knn.fit(X, y)
     print("Sklearn KNN Acc:", accuracy_score(y, sk_knn.predict(X)))
 
-```
 
+```

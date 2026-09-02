@@ -1,4 +1,3 @@
-
 # 12. 层次聚类 (Hierarchical Clustering)
 
 ## 1. 核心原理
@@ -21,28 +20,59 @@
 
 $$d(\mathbf{x}, \mathbf{y}) = \Vert{}\mathbf{x} - \mathbf{y}\Vert{}_2$$
 
+* $d(\mathbf{x}, \mathbf{y})$: 样本点 $\mathbf{x}$ 与样本点 $\mathbf{y}$ 之间的欧氏距离
+* $\mathbf{x}$: 第一个数据点的特征向量
+* $\mathbf{y}$: 第二个数据点的特征向量
+* $\Vert{}\cdot{}\Vert{}_2$: L2 范数（欧氏长度）
+
 ### 2.2 簇间距离定义 (Linkage Metrics)
 
 * **单链接 (Single)**:
 
 $$D(A, B) = \min_{\mathbf{x} \in A, \mathbf{y} \in B} d(\mathbf{x}, \mathbf{y})$$
 
+* $D(A, B)$: 簇 $A$ 与簇 $B$ 之间的单链接距离
+* $A$: 第一个样本簇
+* $B$: 第二个样本簇
+* $\mathbf{x}$: 属于簇 $A$ 的数据点向量
+* $\mathbf{y}$: 属于簇 $B$ 的数据点向量
+* $d(\mathbf{x}, \mathbf{y})$: 数据点 $\mathbf{x}$ 与数据点 $\mathbf{y}$ 之间的距离
+* $\min$: 最小值函数，提取所有点对中的最近距离
 
 * **全链接 (Complete)**:
 
 $$D(A, B) = \max_{\mathbf{x} \in A, \mathbf{y} \in B} d(\mathbf{x}, \mathbf{y})$$
 
+* $D(A, B)$: 簇 $A$ 与簇 $B$ 之间的全链接距离
+* $A$: 第一个样本簇
+* $B$: 第二个样本簇
+* $\mathbf{x}$: 属于簇 $A$ 的数据点向量
+* $\mathbf{y}$: 属于簇 $B$ 的数据点向量
+* $d(\mathbf{x}, \mathbf{y})$: 数据点 $\mathbf{x}$ 与数据点 $\mathbf{y}$ 之间的距离
+* $\max$: 最大值函数，提取所有点对中的最远距离
 
 * **均值链接 (Average)**:
 
 $$D(A, B) = \frac{1}{\vert{}A\vert{}\vert{}B\vert{}} \sum_{\mathbf{x} \in A} \sum_{\mathbf{y} \in B} d(\mathbf{x}, \mathbf{y})$$
 
+* $D(A, B)$: 簇 $A$ 与簇 $B$ 之间的均值链接距离
+* $\vert{}A\vert{}$: 簇 $A$ 中的样本数量（簇大小）
+* $\vert{}B\vert{}$: 簇 $B$ 中的样本数量（簇大小）
+* $\mathbf{x}$: 属于簇 $A$ 的数据点向量
+* $\mathbf{y}$: 属于簇 $B$ 的数据点向量
+* $d(\mathbf{x}, \mathbf{y})$: 数据点 $\mathbf{x}$ 与数据点 $\mathbf{y}$ 之间的距离
+* $\sum$: 求和符号，累加簇 $A$ 与簇 $B$ 中所有数据点对的距离
 
 * **Ward 最小方差法**:
 
 $$\Delta \text{ESS}_{AB} = \frac{\vert{}A\vert{}\vert{}B\vert{}}{\vert{}A\vert{} + \vert{}B\vert{}} \Vert{}\boldsymbol{\mu}_A - \boldsymbol{\mu}_B\Vert{}^2$$
 
-
+* $\Delta \text{ESS}_{AB}$: 合并簇 $A$ 和簇 $B$ 所导致的误差平方和（Error Sum of Squares）增加量
+* $\vert{}A\vert{}$: 簇 $A$ 中的样本数量
+* $\vert{}B\vert{}$: 簇 $B$ 中的样本数量
+* $\boldsymbol{\mu}_A$(缪): 簇 $A$ 中所有数据点的均值向量（中心点）
+* $\boldsymbol{\mu}_B$(缪): 簇 $B$ 中所有数据点的均值向量（中心点）
+* $\Vert{}\boldsymbol{\mu}_A - \boldsymbol{\mu}_B\Vert{}^2$: 两簇中心点之间的欧氏距离平方
 
 ## 3. ASCII 树状图/流程框架图
 
@@ -66,6 +96,7 @@ $$\Delta \text{ESS}_{AB} = \frac{\vert{}A\vert{}\vert{}B\vert{}}{\vert{}A\vert{}
 
 凝聚聚类流程:
  [每个点为一个簇] --> [计算所有簇间距离] --> [合并最近的两个簇] --> [更新距离矩阵] --> [重复直到K个簇]
+
 
 ```
 
@@ -92,5 +123,5 @@ Z = linkage(X, method='ward')
 print("\nLinkage matrix Z (first 3 rows):")
 print(Z[:3])
 
-```
 
+```

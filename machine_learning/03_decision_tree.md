@@ -6,14 +6,15 @@
 
 ```
                     [ 根节点: 年龄 <= 30? ]
-                         /         \
-                      是 /           \ 否
-                        /             \
-             [ 拥有房产? ]          ( 输出: 批准贷款 )
-               /       \
-            是 /         \ 否
-              /           \
-     ( 批准贷款 )      ( 拒绝贷款 )
+                          /         \
+                       是 /           \ 否
+                         /             \
+              [ 拥有房产? ]          ( 输出: 批准贷款 )
+                /       \
+             是 /         \ 否
+               /           \
+      ( 批准贷款 )      ( 拒绝贷款 )
+
 
 ```
 
@@ -27,31 +28,63 @@
 
 集合 $D$ 的熵：
 
-
 $$H(D) = -\sum_{k=1}^{K} p_k \log_2(p_k)$$
 
+* H(D): 集合 D 的信息熵
+* D: 样本数据集
+* K: 数据集中类别的总数
+* k: 类别序号
+* p_k: 属于第 k 个类别的样本在数据集 D 中出现的概率/比例
 
 特征 $A$ 对集合 $D$ 的信息增益：
 
-
 $$Gain(D, A) = H(D) - \sum_{v=1}^{V} \frac{\vert{}D^v\vert{}}{\vert{}D\vert{}} H(D^v)$$
+
+* Gain(D, A): 特征 A 对数据集 D 的信息增益
+* H(D): 数据集 D 的经验熵
+* A: 用于划分的特征/属性
+* V: 特征 A 可能取值的不同特征值的数量
+* v: 特征 A 的具体取值序号
+* D^v: 特征 A 取值为第 v 个值的样本子集
+* |D^v|: 样本子集 D^v 的样本数量
+* |D|: 样本数据集 D 的总样本数量
+* H(D^v): 样本子集 D^v 的经验熵
 
 #### B. 信息增益比 (C4.5)
 
 防止选择取值较多的特征：
 
-
 $$Gain\_ratio(D, A) = \frac{Gain(D, A)}{IV(A)}, \quad IV(A) = -\sum_{v=1}^{V} \frac{\vert{}D^v\vert{}}{\vert{}D\vert{}} \log_2 \frac{\vert{}D^v\vert{}}{\vert{}D\vert{}}$$
+
+* Gain_ratio(D, A): 特征 A 对数据集 D 的信息增益比
+* Gain(D, A): 特征 A 对数据集 D 的信息增益
+* IV(A): 特征 A 的固有值/分裂信息（Split Information）
+* V: 特征 A 可能取值的不同特征值的数量
+* v: 特征 A 的具体取值序号
+* |D^v|: 特征 A 取值为第 v 个值的样本子集数量
+* |D|: 样本数据集 D 的总样本数量
 
 #### C. 基尼指数 (Gini Index - CART)
 
 $$Gini(D) = 1 - \sum_{k=1}^{K} p_k^2$$
 
+* Gini(D): 数据集 D 的基尼指数
+* K: 数据集中类别的总数
+* k: 类别序号
+* p_k: 属于第 k 个类别的样本在数据集 D 中出现的概率/比例
 
 特征 $A$ 分割下的基尼指数：
 
-
 $$Gini\_index(D, A) = \frac{\vert{}D_1\vert{}}{\vert{}D\vert{}} Gini(D_1) + \frac{\vert{}D_2\vert{}}{\vert{}D\vert{}} Gini(D_2)$$
+
+* Gini_index(D, A): 在特征 A 的条件/分割下，数据集 D 的基尼指数
+* D_1: 根据特征 A 的二分条件划分出的第一个子集
+* D_2: 根据特征 A 的二分条件划分出的第二个子集
+* |D_1|: 子集 D_1 的样本数量
+* |D_2|: 子集 D_2 的样本数量
+* |D|: 样本数据集 D 的总样本数量
+* Gini(D_1): 子集 D_1 的基尼指数
+* Gini(D_2): 子集 D_2 的基尼指数
 
 ---
 
@@ -163,3 +196,5 @@ if __name__ == "__main__":
     sk_tree = SklearnTree(max_depth=5)
     sk_tree.fit(X, y)
     print("Sklearn Decision Tree Acc:", accuracy_score(y, sk_tree.predict(X)))
+
+```

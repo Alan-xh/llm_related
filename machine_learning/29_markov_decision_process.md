@@ -1,4 +1,3 @@
-
 # 马尔可夫决策过程 (Markov Decision Process, MDP)
 
 ## 1. 算法原理
@@ -9,20 +8,48 @@
 
 五元组描述：$\mathcal{M} = (S, A, P, R, \gamma)$。
 
+* $\mathcal{M}$: 马尔可夫决策过程模型
+* S: 状态集合 (State Space)
+* A: 动作集合 (Action Space)
+* P: 状态转移概率矩阵/函数
+* R: 奖励函数 (Reward Function)
+* $\gamma$(伽马): 折扣因子 (Discount Factor, $0 \le \gamma \le 1$)
+
 ---
 
 ## 2. 数学公式与推导
 
 1. **贝尔曼期望方程 (Bellman Expectation Equation)**：
 
-$$V^\pi(s) = \sum_{a \in A} \pi(a|s) \sum_{s' \in S} P(s'|s,a) \left[ R(s,a,s') + \gamma V^\pi(s') \right]$$
+$$V^\pi(s) = \sum_{a \in A} \pi(a\vert{}s) \sum_{s' \in S} P(s'\vert{}s,a) \left[ R(s,a,s') + \gamma V^\pi(s') \right]$$
 
+* $V^\pi(s)$: 在策略 $\pi$ 下，状态 $s$ 的状态价值 (State-Value Function)
+* $\pi$(派): 策略 (Policy)，$\pi(a\vert{}s)$ 表示在状态 $s$ 下采取动作 $a$ 的概率
+* a: 当前采取的动作
+* A: 动作集合
+* s: 当前状态
+* S: 状态集合
+* s': 下一个状态
+* $P(s'\vert{}s,a)$: 状态转移概率，即在状态 $s$ 采取动作 $a$ 转移到状态 $s'$ 的概率
+* $R(s,a,s')$: 奖励函数，表示从状态 $s$ 采取动作 $a$ 转移到状态 $s'$ 获得的即时奖励
+* $\gamma$(伽马): 折扣因子
+* $V^\pi(s')$: 在策略 $\pi$ 下，下一个状态 $s'$ 的状态价值
 
 2. **贝尔曼最优方程 (Bellman Optimality Equation)**：
 
-$$V^*(s) = \max_{a \in A} \sum_{s' \in S} P(s'|s,a) \left[ R(s,a,s') + \gamma V^*(s') \right]$$
+$$V^*(s) = \max_{a \in A} \sum_{s' \in S} P(s'\vert{}s,a) \left[ R(s,a,s') + \gamma V^*(s') \right]$$
 
-
+* $V^*(s)$: 状态 $s$ 的最优状态价值 (Optimal State-Value Function)
+* $\max_{a \in A}$: 对所有可能的动作 $a$ 取最大值
+* a: 当前采取的动作
+* A: 动作集合
+* s: 当前状态
+* S: 状态集合
+* s': 下一个状态
+* $P(s'\vert{}s,a)$: 状态转移概率
+* $R(s,a,s')$: 奖励函数
+* $\gamma$(伽马): 折扣因子
+* $V^*(s')$: 下一个状态 $s'$ 的最优状态价值
 
 ---
 
@@ -30,10 +57,10 @@ $$V^*(s) = \max_{a \in A} \sum_{s' \in S} P(s'|s,a) \left[ R(s,a,s') + \gamma V^
 
 ```
                  +-------------------+
-                 |    环境 (Env)     |
+                 |     环境 (Env)     |
                  +-------------------+
                    /               \
-       状态 S_t   /                 \  奖励 R_t
+       状态 S_t   /                 \   奖励 R_t
                  v                   v
             +-----------------------------+
             |        智能体 (Agent)        |
@@ -42,8 +69,9 @@ $$V^*(s) = \max_{a \in A} \sum_{s' \in S} P(s'|s,a) \left[ R(s,a,s') + \gamma V^
                          | 动作 A_t
                          v
                  +-------------------+
-                 |    环境 (Env)     |
+                 |     环境 (Env)     |
                  +-------------------+
+
 
 ```
 
@@ -89,5 +117,5 @@ def value_iteration(P, R, gamma, theta=1e-6):
 V_optimal = value_iteration(P, R, gamma)
 print("MDP 最优状态价值 V*(s):", V_optimal.round(3))
 
-```
 
+```

@@ -1,4 +1,3 @@
-
 # 卷积神经网络 (Convolutional Neural Network, CNN)
 
 ## 1. 算法原理
@@ -18,16 +17,42 @@
 
 假设输入特征图为 $X \in \mathbb{R}^{H \times W}$，卷积核为 $K \in \mathbb{R}^{k_h \times k_w}$，偏置为 $b$。
 
-输出特征图 $Y$ 的坐标 $(i, j)$ 处的元素计算公式为：
+* X: 输入特征图（二维张量/矩阵）
+* $\mathbb{R}$: 实数集
+* H: 输入特征图的高度（行数）
+* W: 输入特征图的宽度（列数）
+* K: 卷积核/滤镜矩阵
+* $k_h$: 卷积核的高度
+* $k_w$: 卷积核的宽度
+* b: 偏置项（标量）
 
+输出特征图 $Y$ 的坐标 $(i, j)$ 处的元素计算公式为：
 
 $$Y_{i, j} = \sum_{m=0}^{k_h-1} \sum_{n=0}^{k_w-1} X_{i+m, j+n} \cdot K_{m, n} + b$$
 
-特征图尺寸变换规则：
+* $Y_{i, j}$: 输出特征图在第 $i$ 行、第 $j$ 列位置的像素值
+* $\sum$: 求和符号
+* $k_h$: 卷积核的高度
+* $k_w$: 卷积核的宽度
+* m: 卷积核高度方向上的索引/偏移量（取值范围 $0$ 到 $k_h-1$）
+* n: 卷积核宽度方向上的索引/偏移量（取值范围 $0$ 到 $k_w-1$）
+* $X_{i+m, j+n}$: 输入特征图中对应感受野窗口内 $(i+m, j+n)$ 位置的像素值
+* $K_{m, n}$: 卷积核内第 $m$ 行、第 $n$ 列的权重参数
+* b: 偏置项
 
+特征图尺寸变换规则：
 
 $$H_{out} = \left\lfloor \frac{H_{in} - k_h + 2P}{S} \right\rfloor + 1, \quad W_{out} = \left\lfloor \frac{W_{in} - k_w + 2P}{S} \right\rfloor + 1$$
 
+* $H_{out}$: 卷积输出特征图的高度
+* $W_{out}$: 卷积输出特征图的宽度
+* $\lfloor \cdot \rfloor$: 向下取整符号
+* $H_{in}$: 输入特征图的高度
+* $W_{in}$: 输入特征图的宽度
+* $k_h$: 卷积核的高度
+* $k_w$: 卷积核的宽度
+* P: 填充（Padding）像素数
+* S: 滑动步长（Stride）
 
 其中 $P$ 为填充（Padding），$S$ 为步长（Stride）。
 
@@ -35,15 +60,33 @@ $$H_{out} = \left\lfloor \frac{H_{in} - k_h + 2P}{S} \right\rfloor + 1, \quad W_
 
 在尺寸为 $p_h \times p_w$ 的窗口内提取最大值：
 
-
 $$Y_{i, j} = \max_{0 \le m < p_h, 0 \le n < p_w} X_{i \cdot S + m, j \cdot S + n}$$
+
+* $Y_{i, j}$: 池化输出特征图在第 $i$ 行、第 $j$ 列位置的元素
+* $\max$: 求最大值函数
+* $p_h$: 池化窗口的高度
+* $p_w$: 池化窗口的宽度
+* m: 池化窗口高度方向上的索引（取值范围 $0$ 到 $p_h-1$）
+* n: 池化窗口宽度方向上的索引（取值范围 $0$ 到 $p_w-1$）
+* $X_{i \cdot S + m, j \cdot S + n}$: 输入特征图中处于当前池化窗口内的像素值
+* S: 池化滑动的步长（Stride）
 
 ### 2.3 反向传播 (Backpropagation in Conv Layer)
 
 对于卷积核权重 $K_{m,n}$ 的梯度更新，根据链式法则：
 
-
 $$\frac{\partial L}{\partial K_{m,n}} = \sum_{i} \sum_{j} \frac{\partial L}{\partial Y_{i,j}} \cdot X_{i+m, j+n}$$
+
+* $\frac{\partial L}{\partial K_{m,n}}$: 损失函数 $L$ 关于卷积核第 $m$ 行第 $n$ 列权重 $K_{m,n}$ 的偏导数（梯度）
+* $\partial(\text{德尔塔})$: 偏导数符号
+* L: 损失函数（Loss Function）
+* $K_{m,n}$: 卷积核内第 $m$ 行第 $n$ 列的权重
+* $\sum$: 求和符号
+* i: 卷积输出特征图的行索引
+* j: 卷积输出特征图的列索引
+* $\frac{\partial L}{\partial Y_{i,j}}$: 损失函数 $L$ 关于输出特征图第 $i$ 行第 $j$ 列元素的偏导数（上游梯度）
+* $Y_{i,j}$: 卷积输出特征图在 $(i,j)$ 位置的值
+* $X_{i+m, j+n}$: 正向传播时与权重 $K_{m,n}$ 相乘的前向输入特征图元素
 
 ---
 
@@ -57,6 +100,7 @@ $$\frac{\partial L}{\partial K_{m,n}} = \sum_{i} \sum_{j} \frac{\partial L}{\par
  +---+---+---+  -----> +---+---+   ------->    +---+    --->  ( 0.9 )
  |   |   |   |  Kernel |   |   |   Max Pool    |   |          ( 0.1 )
  +---+---+---+         +---+---+               +---+
+
 
 ```
 
@@ -122,5 +166,5 @@ if __name__ == "__main__":
     print("卷积后特征图形状:", conv_res.shape)
     print("池化后特征图形状:", pool_res.shape)
 
-```
 
+```

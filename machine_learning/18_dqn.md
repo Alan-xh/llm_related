@@ -1,4 +1,3 @@
-
 # 18. 深度Q网络 (Deep Q-Network, DQN)
 
 ## 1. 核心原理
@@ -16,13 +15,41 @@
 
 $$y_i = r_i + \gamma (1 - \text{done}_i) \max_{a'} Q(s'_i, a'; \theta^-)$$
 
+* $y_i$: 第 $i$ 个样本的目标 Q 值（Target Q-value）
+* $r_i$: 第 $i$ 个样本获得的即时奖励（Reward）
+* $\gamma$(伽马): 折扣因子（Discount Factor），控制未来奖励的现值权重
+* $\text{done}_i$: 第 $i$ 个样本的终止状态标志位（终止状态为 1，非终止状态为 0）
+* $a'$: 在下一状态 $s'_i$ 下可能采取的所有动作（Next Action）
+* $s'_i$: 第 $i$ 个样本的下一个状态（Next State）
+* $Q(s'_i, a'; \theta^-)$: 目标 Q 网络对下一状态-动作对估算的价值
+* $\theta^-$(西塔负/目标西塔): 目标 Q 网络的网络参数
+
 ### 2.2 损失函数 (均方误差 MSE)
 
 $$L(\theta) = \frac{1}{B} \sum_{i=1}^{B} \left( y_i - Q(s_i, a_i; \theta) \right)^2$$
 
+* $L(\theta)$: 关于当前 Q 网络参数 $\theta$ 的损失函数（Loss Function）
+* $\theta$(西塔): 当前 Q 网络的可训练权重参数
+* $B$: 随机采样的批次大小（Batch Size）
+* $i$: 批次中采样样本的索引
+* $y_i$: 第 $i$ 个样本计算得到的目标 Q 值
+* $s_i$: 第 $i$ 个样本的当前状态（Current State）
+* $a_i$: 第 $i$ 个样本执行的动作（Current Action）
+* $Q(s_i, a_i; \theta)$: 当前 Q 网络预测的在状态 $s_i$ 下采取动作 $a_i$ 的 Q 估算值
+
 ### 2.3 梯度更新
 
 $$\nabla_{\theta} L(\theta) = -\frac{2}{B} \sum_{i=1}^{B} \left[ y_i - Q(s_i, a_i; \theta) \right] \nabla_{\theta} Q(s_i, a_i; \theta)$$
+
+* $\nabla_{\theta}$(纳布拉/梯度): 损失函数对当前 Q 网络参数 $\theta$ 的梯度
+* $L(\theta)$: 损失函数
+* $B$: 随机采样的批次大小（Batch Size）
+* $i$: 批次中采样样本的索引
+* $y_i$: 第 $i$ 个样本的目标 Q 值
+* $s_i$: 第 $i$ 个样本的当前状态
+* $a_i$: 第 $i$ 个样本执行的动作
+* $Q(s_i, a_i; \theta)$: 当前 Q 网络预测的 Q 估算值
+* $\nabla_{\theta} Q(s_i, a_i; \theta)$: 当前 Q 网络输出对网络参数 $\theta$ 的偏导数/梯度
 
 ## 3. ASCII 结构框架图
 
@@ -54,6 +81,7 @@ $$\nabla_{\theta} L(\theta) = -\frac{2}{B} \sum_{i=1}^{B} \left[ y_i - Q(s_i, a_
                           v
                 反向传播更新 theta
                 定期更新 theta- <- theta
+
 
 ```
 
@@ -125,5 +153,5 @@ if __name__ == "__main__":
     agent.buffer.append(([0.1, 0.2, 0.3, 0.4], 1, 1.0, [0.2, 0.3, 0.4, 0.5], False))
     print("DQN agent initialized successfully.")
 
-```
 
+```

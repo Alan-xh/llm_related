@@ -2,9 +2,14 @@
 
 ## 1. 算法原理
 
-人工神经网络（ANN）是受生物神经元网络启发的计算模型。最基础的结构是多层感知机（Multilayer Perceptron, MLP），由输入层、一个或多个隐藏层以及输出层构成。
+人工神经网络（ANN）是受生物神经元网络启方的计算模型。最基础的结构是多层感知机（Multilayer Perceptron, MLP），由输入层、一个或多个隐藏层以及输出层构成。
 
-每一层包含多个神经元，层与层之间通过权重 $W$ 和偏置 $b$ 连接。输入信号在网络中向后传播（前向传播），产生预测值；通过损失函数计算预测值与真实值之间的差距，再利用反向传播算法（Backpropagation）结合梯度下降（Gradient Descent）更新权重和偏置，从而实现模型的学习。
+每一层包含多个神经元，层与层之间通过权重 $W$ 和偏置 $b$ 连接。
+
+* W: 权重 (Weight)
+* b: 偏置 (Bias)
+
+输入信号在网络中向后传播（前向传播），产生预测值；通过损失函数计算预测值与真实值之间的差距，再利用反向传播算法（Backpropagation）结合梯度下降（Gradient Descent）更新权重和偏置，从而实现模型的学习。
 
 ---
 
@@ -13,46 +18,166 @@
 现以单隐藏层的感知机为例进行推导：
 
 ### 2.1 前向传播 (Forward Propagation)
+
 假设输入向量为 $\mathbf{x} \in \mathbb{R}^{d}$，隐藏层有 $m$ 个神经元，输出层有 $k$ 个神经元。
 
+* x: 输入特征向量
+* d: 输入特征维数/输入层节点数
+* R: 实数集
+
 1. **隐藏层输入与激活**：
-   $$\mathbf{z}^{(1)} = \mathbf{W}^{(1)} \mathbf{x} + \mathbf{b}^{(1)}$$
-   $$\mathbf{a}^{(1)} = \sigma(\mathbf{z}^{(1)})$$
-   其中 $\mathbf{W}^{(1)} \in \mathbb{R}^{m \times d}$，$\sigma(\cdot)$ 为非线性激活函数（如 Sigmoid、ReLU）。
+
+$$\mathbf{z}^{(1)} = \mathbf{W}^{(1)} \mathbf{x} + \mathbf{b}^{(1)}$$
+
+
+* z^{(1)}: 隐藏层的未激活输入向量（线性组合结果）
+* W^{(1)}: 输入层到隐藏层的权重矩阵
+* x: 输入特征向量
+* b^{(1)}: 隐藏层的偏置向量
+
+
+$$\mathbf{a}^{(1)} = \sigma(\mathbf{z}^{(1)})$$
+
+
+* a^{(1)}: 隐藏层的激活输出向量
+* σ(西格玛): 非线性激活函数
+* z^{(1)}: 隐藏层的未激活输入向量
+
+
+其中 $\mathbf{W}^{(1)} \in \mathbb{R}^{m \times d}$，$\sigma(\cdot)$ 为非线性激活函数（如 Sigmoid、ReLU）。
+* W^{(1)}: 输入层到隐藏层的权重矩阵
+* R: 实数集
+* m: 隐藏层神经元个数
+* d: 输入特征维数
+* σ(西格玛): 非线性激活函数
+
 
 2. **输出层输入与激活**：
-   $$\mathbf{z}^{(2)} = \mathbf{W}^{(2)} \mathbf{a}^{(1)} + \mathbf{b}^{(2)}$$
-   $$\hat{\mathbf{y}} = g(\mathbf{z}^{(2)})$$
-   其中 $g(\cdot)$ 为输出层激活函数（如用于分类的 Softmax，或用于回归的恒等函数）。
+
+$$\mathbf{z}^{(2)} = \mathbf{W}^{(2)} \mathbf{a}^{(1)} + \mathbf{b}^{(2)}$$
+
+
+* z^{(2)}: 输出层的未激活输入向量
+* W^{(2)}: 隐藏层到输出层的权重矩阵
+* a^{(1)}: 隐藏层的激活输出向量
+* b^{(2)}: 输出层的偏置向量
+
+
+$$\hat{\mathbf{y}} = g(\mathbf{z}^{(2)})$$
+
+
+* ŷ (y-hat): 网络对输入的预测值向量
+* g: 输出层的激活函数
+* z^{(2)}: 输出层的未激活输入向量
+
+
+其中 $g(\cdot)$ 为输出层激活函数（如用于分类的 Softmax，或用于回归的恒等函数）。
+* g: 输出层激活函数
+
+
 
 ### 2.2 损失函数 (Loss Function)
+
 对于均方误差 (MSE) 损失：
-$$L(\mathbf{W}, \mathbf{b}) = \frac{1}{2} \|\hat{\mathbf{y}} - \mathbf{y}\|_2^2$$
+
+
+$$L(\mathbf{W}, \mathbf{b}) = \frac{1}{2} \Vert{}\hat{\mathbf{y}} - \mathbf{y}\Vert{}_2^2$$
+
+* L: 损失函数值 (Loss)
+* W: 网络中的权重集合
+* b: 网络中的偏置集合
+* ŷ (y-hat): 模型的预测值向量
+* y: 真实标签向量
+* ||·||_2: L2 范数（欧氏距离）
 
 ### 2.3 反向传播与链式法则 (Backpropagation)
+
 根据链式法则计算损失函数对权重和偏置的偏导数：
 
 1. **输出层梯度**：
-   $$\delta^{(2)} = \frac{\partial L}{\partial \mathbf{z}^{(2)}} = (\hat{\mathbf{y}} - \mathbf{y}) \odot g'(\mathbf{z}^{(2)})$$
-   $$\frac{\partial L}{\partial \mathbf{W}^{(2)}} = \delta^{(2)} (\mathbf{a}^{(1)})^T, \quad \frac{\partial L}{\partial \mathbf{b}^{(2)}} = \delta^{(2)}$$
+
+$$\delta^{(2)} = \frac{\partial L}{\partial \mathbf{z}^{(2)}} = (\hat{\mathbf{y}} - \mathbf{y}) \odot g'(\mathbf{z}^{(2)})$$
+
+
+* δ(德尔塔)^(2): 输出层的误差项/梯度项
+* ∂(偏微分符号): 偏导数运算符号
+* L: 损失函数
+* z^{(2)}: 输出层的未激活输入向量
+* ŷ (y-hat): 预测值向量
+* y: 真实标签向量
+* ⊙: 哈达玛积（Hadamard product，按元素相乘）
+* g': 输出层激活函数 g 的导数
+
+
+$$\frac{\partial L}{\partial \mathbf{W}^{(2)}} = \delta^{(2)} (\mathbf{a}^{(1)})^T, \quad \frac{\partial L}{\partial \mathbf{b}^{(2)}} = \delta^{(2)}$$
+
+
+* L: 损失函数
+* W^{(2)}: 隐藏层到输出层的权重矩阵
+* b^{(2)}: 输出层的偏置向量
+* δ(德尔塔)^(2): 输出层的误差项
+* a^{(1)}: 隐藏层的激活输出向量
+* T: 矩阵转置符号
+
 
 2. **隐藏层梯度**：
-   $$\delta^{(1)} = \frac{\partial L}{\partial \mathbf{z}^{(1)}} = \left( (\mathbf{W}^{(2)})^T \delta^{(2)} \right) \odot \sigma'(\mathbf{z}^{(1)})$$
-   $$\frac{\partial L}{\partial \mathbf{W}^{(1)}} = \delta^{(1)} \mathbf{x}^T, \quad \frac{\partial L}{\partial \mathbf{b}^{(1)}} = \delta^{(1)}$$
+
+$$\delta^{(1)} = \frac{\partial L}{\partial \mathbf{z}^{(1)}} = \left( (\mathbf{W}^{(2)})^T \delta^{(2)} \right) \odot \sigma'(\mathbf{z}^{(1)})$$
+
+
+* δ(德尔塔)^(1): 隐藏层的误差项/梯度项
+* ∂(偏微分符号): 偏导数运算符号
+* L: 损失函数
+* z^{(1)}: 隐藏层的未激活输入向量
+* W^{(2)}: 隐藏层到输出层的权重矩阵
+* T: 矩阵转置符号
+* δ(德尔塔)^(2): 输出层的误差项
+* ⊙: 哈达玛积（按元素相乘）
+* σ'(西格玛): 隐藏层激活函数 σ 的导数
+
+
+$$\frac{\partial L}{\partial \mathbf{W}^{(1)}} = \delta^{(1)} \mathbf{x}^T, \quad \frac{\partial L}{\partial \mathbf{b}^{(1)}} = \delta^{(1)}$$
+
+
+* L: 损失函数
+* W^{(1)}: 输入层到隐藏层的权重矩阵
+* b^{(1)}: 隐藏层的偏置向量
+* δ(德尔塔)^(1): 隐藏层的误差项
+* x: 输入特征向量
+* T: 矩阵转置符号
+
 
 3. **参数更新**：
-   $$\mathbf{W}^{(l)} \leftarrow \mathbf{W}^{(l)} - \eta \frac{\partial L}{\partial \mathbf{W}^{(l)}}$$
-   $$\mathbf{b}^{(l)} \leftarrow \mathbf{b}^{(l)} - \eta \frac{\partial L}{\partial \mathbf{b}^{(l)}}$$
-   其中 $\eta$ 为学习率。
+
+$$\mathbf{W}^{(l)} \leftarrow \mathbf{W}^{(l)} - \eta \frac{\partial L}{\partial \mathbf{W}^{(l)}}$$
+
+
+* W^{(l)}: 第 l 层的权重矩阵
+* η(艾塔): 学习率 (Learning rate)
+* ∂(偏微分符号): 偏导数运算符号
+* L: 损失函数
+
+
+$$\mathbf{b}^{(l)} \leftarrow \mathbf{b}^{(l)} - \eta \frac{\partial L}{\partial \mathbf{b}^{(l)}}$$
+
+
+* b^{(l)}: 第 l 层的偏置向量
+* η(艾塔): 学习率 (Learning rate)
+* ∂(偏微分符号): 偏导数运算符号
+* L: 损失函数
+
+
+其中 $\eta$ 为学习率。
+* η(艾塔): 学习率
+
+
 
 ---
 
 ## 3. ASCII 结构图
 
-
 ```
 
-```
   [ 输入层 ]             [ 隐藏层 ]             [ 输出层 ]
 
 x1 \                   /-- (a1) --\
@@ -64,7 +189,6 @@ x3 /                   \-- (a3) --/
      |               |              |               |
      +--- W(1), b(1) +--------------+--- W(2), b(2) +
 
-```
 
 ```
 
@@ -137,6 +261,7 @@ if __name__ == "__main__":
     preds = mlp.forward(X)
     print("XOR 预测结果:", preds.round(3))
 
+
 ```
 
 ### 4.2 Scikit-Learn 实现
@@ -153,5 +278,5 @@ clf.fit(X, y)
 
 print("Scikit-Learn XOR 预测:", clf.predict(X))
 
-```
 
+```
