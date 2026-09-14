@@ -117,3 +117,20 @@ $x_t = \sqrt{\bar{\alpha}_t} \, x_0 + \sqrt{1 - \bar{\alpha}_t} \, \epsilon, \qu
 | 单步衰减系数 | $\alpha_t = 1 - \beta_t$ |
 | 累积衰减系数 | $\bar{\alpha}_t = \prod_{i=1}^t \alpha_i$ |
 
+---
+
+## 去噪扩散隐式模型(DDIM)
+
+DDIM 与 DDPM 使用相同的前向加噪过程和噪声预测训练目标，但可以在采样时跳过大部分时间步，从而用更少的网络调用生成样本。
+
+- 技术文档：[ddim_model.md](./ddim_model.md)
+- 训练与采样代码：[train_ddim.py](./train_ddim.py)
+
+快速运行：
+
+```bash
+python train_ddim.py --dataset synthetic --epochs 1 --sampling-steps 20
+```
+
+其中 `--eta 0` 是确定性 DDIM；增大 `--sampling-steps` 可以提高采样轨迹的时间分辨率。
+

@@ -244,6 +244,69 @@ class ContrastiveLoss(nn.Module):
 
         return (loss_i + loss_t) / 2.0
 
+    @torch.no_grad()
+    def batch_inference(self, inputs: torch.Tensor) -> torch.Tensor:
+        """
+        批次特征提取推理接口 (Batch Inference Interface)。
+
+        根据输入的张量维度与数据类型，自动判定模态并编码到统一的嵌入空间：
+          - 图像维度为 4 维 (Batch, Channel, Height, Width) 且类型为浮点数
+          - 文本维度为 2 维 (Batch, Seq_Len) 且类型为长整型
+
+        Args:
+            inputs (Tensor): 批次输入张量 [B, C, H, W] 或 [B, Seq_Len]。
+
+        Returns:
+            features (Tensor): L2 归一化后的嵌入特征向量，shape: [B, embed_dim]。
+        """
+        self.eval()
+
+        # 根据张量秩 (ndim) 和 dtype 判断模态
+        if inputs.ndim == 4 and inputs.dtype in (
+            torch.float32,
+            torch.float64,
+            torch.float16,
+        ):
+            # 图像模态编码
+            return self.image_encoder(inputs)
+        elif inputs.ndim == 2 and inputs.dtype in (
+            torch.int64,
+            torch.int32,
+            torch.int16,
+        ):
+            # 文本模态编码
+            return self.text_encoder(inputs)
+        else:
+            raise ValueError(
+                f"无法识别的输入张量格式: shape={inputs.shape}, dtype={inputs.dtype}。"
+                f"图像输入应为 4D 浮点张量 [B, C, H, W]，文本输入应为 2D 整数张量 [B, Seq_Len]。"
+            )
+
+    @torch.no_grad()
+    def inference(self, input_sample: torch.Tensor) -> torch.Tensor:
+        """
+        单样本特征提取推理接口 (Single Sample Inference Interface)。
+
+        自动将单样本扩展为 Batch 维度 (dim 0)，调用 batch_inference 计算后压缩回单样本形状。
+
+        Args:
+            input_sample (Tensor): 单个图像 [C, H, W] 或单个文本 Token 序列 [Seq_Len]。
+
+        Returns:
+            feature (Tensor): L2 归一化后的单样本嵌入特征向量，shape: [embed_dim]。
+        """
+        # 判断维度：如果是 3D (图像) 或 1D (文本)，增加 Batch 维度
+        if input_sample.ndim == 3 or input_sample.ndim == 1:
+            batch_input = input_sample.unsqueeze(0)
+        else:
+            # 如果传入的已经是 4D 或 2D 且 BatchSize=1，按原形状处理
+            batch_input = input_sample
+
+        # 调用批次推理接口
+        batch_features = self.batch_inference(batch_input)
+
+        # 压缩 Batch 维度，输出 [embed_dim]
+        return batch_features.squeeze(0)
 
 # ======================================================================================
 # 8. 训练/推理逻辑与入口 (Training/Inference Execution)

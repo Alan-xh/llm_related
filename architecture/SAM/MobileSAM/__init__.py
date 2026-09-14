@@ -1,0 +1,1 @@
+"""Compact MobileSAM teaching model."""

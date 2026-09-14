@@ -1,0 +1,1 @@
+"""Compact FastSAM teaching model."""

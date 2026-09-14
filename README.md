@@ -30,6 +30,7 @@
 | 目录 | 内容 | 主要入口 |
 | --- | --- | --- |
 | [`handwrite_network/`](./handwrite_network/) | 手写 GPT-2、MLA、RMSNorm 和 Rotary Embedding 等基础组件 | `gpt2.py`、`MLA.py` |
+| [`architecture/`](./architecture/) | YOLO、DETR、SAM、Qwen、GLM、Stable Diffusion 和 Wan 等模型架构的分版本教学实现 | `architecture/README.md` |
 | [`train_llm_from_scratch/`](./train_llm_from_scratch/) | 从零实现小型 Causal LM，并串联预训练、SFT、DPO | `train.py`、`sft_train.py`、`dpo_train.py` |
 | [`train_moe_from_scratch/`](./train_moe_from_scratch/) | MoE 语言模型、路由器、专家网络、负载均衡和 SFT | `moe_train.py`、`moe_sft_train.py` |
 | [`train_multimodal_from_scratch/`](./train_multimodal_from_scratch/) | SigLIP/视觉编码器与 Qwen Causal LM 对接的多模态模型 | `train.py`、`sft_train.py`、`test.py` |
