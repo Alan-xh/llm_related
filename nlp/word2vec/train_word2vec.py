@@ -22,6 +22,7 @@ import jieba
 import numpy as np
 import os
 from pathlib import Path
+from typing import List, Dict
 import random
 from collections import Counter
 
@@ -155,7 +156,7 @@ def build_subsample_probs(freq, total, sample=1e-3):
 
 
 # ---------------------- 6. 生成训练样本 ----------------------
-def generate_skipgram_pairs(sentences, word2id, p_keep, window):
+def generate_skipgram_pairs(sentences: List[List[str]], word2id:Dict[str, int], p_keep:np.ndarray, window: int):
     """
     Skip-gram：生成 (中心词, 上下文词) 训练对。
 
@@ -177,10 +178,10 @@ def generate_skipgram_pairs(sentences, word2id, p_keep, window):
         if len(ids) < 2:
             continue
         for i, center in enumerate(ids):
-            win = np.random.randint(1, window + 1)
-            start = max(0, i - win)
-            end = min(len(ids), i + win + 1)
-            for j in range(start, end):
+            win = np.random.randint(1, window + 1) # 随机选取一个窗口大小
+            start = max(0, i - win) # 窗口开始索引
+            end = min(len(ids), i + win + 1) # 窗口结束索引
+            for j in range(start, end): # 词队
                 if j != i:
                     pairs.append((center, ids[j]))
     return pairs
@@ -220,7 +221,7 @@ def generate_cbow_pairs(sentences, word2id, p_keep, window):
 # ---------------------- 7. 初始化 ----------------------
 def init_weights(vocab_size, dim, seed=42):
     """
-    初始化输入/输出词向量矩阵。
+    初始化输入/输出词向量矩阵
 
     输入：
         vocab_size (int)：词表大小；
@@ -252,14 +253,18 @@ def sigmoid(x):
 
 
 # ---------------------- 8. 训练 Skip-gram ----------------------
-def train_skipgram(sentences, word2id, id2word, freq, model_path):
+def train_skipgram(sentences: List[List[str]], 
+                   word2id: Dict[int, str], 
+                   id2word: Dict[str, int], 
+                   freq: np.ndarray, 
+                   model_path: Path):
     """
     使用负采样训练 Skip-gram 模型。
 
     输入：
         sentences (List[List[str]])：句子列表；
         word2id (Dict[str, int])：词到 id 映射；
-        id2word (Dict[int, str])：id 到词映射；
+        id2word (Dict[int, str])：id 到词映射； 
         freq (np.ndarray)：词频数组；
         model_path (str | Path)：模型保存路径。
 
@@ -288,10 +293,10 @@ def train_skipgram(sentences, word2id, id2word, freq, model_path):
         loss_sum = 0.0
         lr = LEARNING_RATE
         for step, (center, context) in enumerate(pairs):
-            v_c = W_in[center]
-            u_o = W_out[context]
-            pred = sigmoid(np.dot(v_c, u_o))
-            g = (pred - 1.0) * lr
+            v_c = W_in[center] # 获取中心词汇词向量
+            u_o = W_out[context] # 获得上下文词汇词向量
+            pred = sigmoid(np.dot(v_c, u_o)) # 点乘计算两个 token 相似度再进行香农函数激活
+            g = (pred - 1.0) * lr # 计算梯度
 
             grad_c = g * u_o
             W_out[context] -= g * v_c
