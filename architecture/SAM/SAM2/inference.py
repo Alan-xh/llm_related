@@ -1,4 +1,9 @@
-"""Propagate a point prompt through a short synthetic video."""
+"""Inference pipeline for SAM 2 streaming video segmentation.
+
+The first frame receives a point prompt ``[1,1,2]``/``[1,1]``. Each
+``predict_frame`` call returns masks ``[1,K,H,W]``, scores ``[1,K]``, and a
+bounded ``VideoMemory`` state passed to the next frame.
+"""
 
 from __future__ import annotations
 
@@ -19,6 +24,7 @@ except ImportError:
 
 
 def main() -> None:
+    """Propagate one point prompt through a synthetic video sequence."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--frames", type=int, default=4)
     parser.add_argument("--image-size", type=int, default=64)
@@ -40,6 +46,7 @@ def main() -> None:
                 state,
                 frame,
             )
+        # Per-frame masks: [1,K,H,W]; scores: [1,K]; state is bounded.
         print(f"frame={frame} masks={tuple(masks.shape)} scores={tuple(scores.shape)}")
 
 

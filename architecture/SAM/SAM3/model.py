@@ -1,4 +1,15 @@
-"""SAM 3-style concept segmentation with text and exemplar prompts."""
+"""SAM 3 teaching model for text-conditioned concept segmentation.
+
+Task:
+    Combine text, exemplar-box, and point prompts. Images are ``[B,3,H,W]``;
+    text becomes concept tokens ``[B,1,C]``; outputs contain masks
+    ``[B,K,H,W]``, IoU scores ``[B,K]``, presence logits ``[B,1]``, and image
+    embeddings ``[B,C,H/8,W/8]``.
+
+Core formula:
+    ``presence = Linear(mean(image_feature))``; masks use the shared dynamic
+    hypernetwork decoder.
+"""
 
 from __future__ import annotations
 
@@ -22,6 +33,7 @@ ConceptSegmenter = SAM3Model
 
 
 def build_model(image_size: int = 64) -> SAM3Model:
+    """Build a compact text-conditioned SAM 3 model."""
     return SAM3Model(SAMConfig(image_size=image_size))
 
 

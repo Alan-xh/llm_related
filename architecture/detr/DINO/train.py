@@ -1,4 +1,9 @@
-"""Train compact DINO with two-stage and denoising queries."""
+"""DINO 训练入口。
+
+two-stage encoder proposal 先选择 ``[B,Q,D]`` query，训练时再拼接
+``[B,G*M,D]`` contrastive denoising query；criterion 计算正常集合损失和
+``CE + 5*L1`` 去噪损失。
+"""
 
 from __future__ import annotations
 
@@ -19,6 +24,8 @@ except ImportError:
 
 
 def main() -> None:
+    """执行 DINO 的 two-stage query selection 与 DN 训练。"""
+
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_train_args(parser, "dino_tiny.pt")
     args = parser.parse_args()
@@ -26,6 +33,7 @@ def main() -> None:
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     for step in range(args.steps):
         images, targets = synthetic_detection_batch(args.batch_size, args.image_size, 3, args.device)
+        # targets 触发 encoder proposal 之后的 denoising query 拼接。
         loss = criterion(model(images, targets=targets), targets)
         optimizer.zero_grad(set_to_none=True)
         loss.backward()

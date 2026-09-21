@@ -158,7 +158,7 @@ def build_subsample_probs(freq, total, sample=1e-3):
 # ---------------------- 6. 生成训练样本 ----------------------
 def generate_skipgram_pairs(sentences: List[List[str]], word2id:Dict[str, int], p_keep:np.ndarray, window: int):
     """
-    Skip-gram：生成 (中心词, 上下文词) 训练对。
+    Skip-gram：随机选择一个窗口，构建 (中心词, 上下文词) 训练对。
 
     输入：
         sentences (List[List[str]])：句子列表；
@@ -181,7 +181,7 @@ def generate_skipgram_pairs(sentences: List[List[str]], word2id:Dict[str, int], 
             win = np.random.randint(1, window + 1) # 随机选取一个窗口大小
             start = max(0, i - win) # 窗口开始索引
             end = min(len(ids), i + win + 1) # 窗口结束索引
-            for j in range(start, end): # 词队
+            for j in range(start, end): # 词对
                 if j != i:
                     pairs.append((center, ids[j]))
     return pairs
@@ -221,7 +221,8 @@ def generate_cbow_pairs(sentences, word2id, p_keep, window):
 # ---------------------- 7. 初始化 ----------------------
 def init_weights(vocab_size, dim, seed=42):
     """
-    初始化输入/输出词向量矩阵
+    初始化输入/输出词向量矩阵，将字典维度的词转成词向量
+    其中输入矩阵为 [v, d] ~ N, 输出矩阵为 [v, d] ~ 0
 
     输入：
         vocab_size (int)：词表大小；
@@ -240,7 +241,8 @@ def init_weights(vocab_size, dim, seed=42):
 
 def sigmoid(x):
     """
-    Sigmoid 激活函数，带数值裁剪防止溢出。
+    Sigmoid 激活函数, 带数值裁剪防止溢出。
+    f(x) = 1 / (1 + e^-x) , (0, 1)
 
     输入：
         x (np.ndarray | float)：输入值。
@@ -293,20 +295,34 @@ def train_skipgram(sentences: List[List[str]],
         loss_sum = 0.0
         lr = LEARNING_RATE
         for step, (center, context) in enumerate(pairs):
+            # 正采样二分类式词向量训练
             v_c = W_in[center] # 获取中心词汇词向量
             u_o = W_out[context] # 获得上下文词汇词向量
             pred = sigmoid(np.dot(v_c, u_o)) # 点乘计算两个 token 相似度再进行香农函数激活
+            '''
+            预测值: y^ = σ(v_c * v_o)
+            目标值: 1
+            损失值: L = -log(y^)
+
+            链式法则求损失值对点乘(v_c * v_o)的导数: - (1 / y^) * y^ (1 - y^) = y^ - 1
+            '''
             g = (pred - 1.0) * lr # 计算梯度
 
-            grad_c = g * u_o
-            W_out[context] -= g * v_c
+            '''
+            当 pred < 1（相似度不够）时，g 为负，grad_c 与 u_o 反向
+            当 pred → 1 时，g → 0，梯度消失，不再更新。
+            '''
+            grad_c = g * u_o # 对 v_c 求梯度: d_L / d_vc = (y^ - 1) * u_0
+            W_out[context] -= g * v_c # d_L / d_uo = (y^ - 1) * v_c
             W_in[center]    -= grad_c
-            loss_sum += -np.log(pred + 1e-9)
+            loss_sum += -np.log(pred + 1e-9) # 累加损失，损失为 -log(y^)
 
+            # 负采样（从采样表中随机抽取 NEGATIVE 个负样本词, 对每个负样本进行二分类训练）
             neg_ids = neg_table[np.random.randint(0, len(neg_table), NEGATIVE)]
             for neg in neg_ids:
                 if neg == context:
                     continue
+                
                 u_neg = W_out[neg]
                 pred_n = sigmoid(np.dot(v_c, u_neg))
                 g_n = (pred_n - 0.0) * lr
@@ -316,6 +332,26 @@ def train_skipgram(sentences: List[List[str]],
                 W_in[center] -= grad_c_n
                 loss_sum += -np.log(1.0 - pred_n + 1e-9)
 
+                u_neg = W_out[neg]                          # 获取负样本词汇词向量
+                pred_n = sigmoid(np.dot(v_c, u_neg))        # 点乘计算中心词与负样本相似度再进行香农函数激活
+                '''
+                预测值: y^- = σ(v_c * u_neg)
+                目标值: 0
+                损失值: L = -log(1 - y^-)
+
+                链式法则求损失值对点乘(v_c * u_neg)的导数:
+                - (1 / (1 - y^-)) * (-1) * y^- (1 - y^-) = y^-
+                '''
+                g_n = (pred_n - 0.0) * lr                    # 计算梯度
+
+                '''
+                当 pred_n > 0（相似度太高）时，g_n 为正，grad_c_n 与 u_neg 同向
+                当 pred_n → 0 时，g_n → 0，梯度消失，不再更新。
+                '''
+                grad_c_n = g_n * u_neg                       # 对 v_c 求梯度: d_L / d_vc = y^- * u_neg
+                W_out[neg] -= g_n * v_c                      # d_L / d_u_neg = y^- * v_c
+                W_in[center] -= grad_c_n
+                loss_sum += -np.log(1.0 - pred_n + 1e-9)     # 累加损失，损失为 -log(1 - y^-)
             # 学习率线性衰减
             lr = max(LEARNING_RATE * (1.0 - (epoch * total_pairs + step) /
                                       (EPOCHS * total_pairs)), 1e-4)

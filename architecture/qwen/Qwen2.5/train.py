@@ -1,3 +1,9 @@
+"""Qwen2.5 教学模型训练入口。
+
+本文件训练带 scaled RoPE 的 GQA decoder。``seq_len`` 只控制教学 batch
+的当前长度；模型的 RoPE cache 会按实际位置自动扩展到所需长度。
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -19,6 +25,7 @@ except ModuleNotFoundError:
 
 
 def main() -> None:
+    """训练 Qwen2.5 教学模型并保存参数。"""
     parser = argparse.ArgumentParser(description="Train a tiny Qwen2.5-style long-context LM.")
     parser.add_argument("--steps", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=2)
@@ -35,10 +42,12 @@ def main() -> None:
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     model.train()
     for step in range(args.steps):
+        # inputs/labels: [B, T]；scaled RoPE 在注意力内部作用于 [B, heads, T, D]。
         inputs, labels = build_training_batch(
             tokenizer, args.text, args.batch_size, args.seq_len, step, device
         )
         output = model(inputs, labels=labels)
+        # output.loss 为 shifted cross entropy 标量。
         optimizer.zero_grad(set_to_none=True)
         output.loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)

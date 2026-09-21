@@ -1,4 +1,9 @@
-"""Train the compact SAM 2 image path on synthetic prompts."""
+"""Training pipeline for the SAM 2 teaching model.
+
+This demo trains the image path on synthetic prompts. Each batch uses images
+``[B,3,H,W]`` and returns masks ``[B,K,H,W]`` plus scores ``[B,K]``; video
+memory is exercised by the separate inference entry point.
+"""
 
 from __future__ import annotations
 
@@ -17,6 +22,7 @@ except ImportError:
 
 
 def main() -> None:
+    """Parse CLI options and train the SAM 2 image path."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--steps", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=2)

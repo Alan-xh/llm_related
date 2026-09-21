@@ -1,4 +1,14 @@
-"""SAM 3.1-style multiplexed concept segmentation."""
+"""SAM 3.1 teaching model with object-token multiplexing.
+
+Task:
+    Decode multiple text/object prompts against one image. The image is
+    ``[1,3,H,W]``; each prompt is an object token ``[1,1,C]``; outputs restore
+    an object axis as masks ``[1,O,K,H,W]`` and scores ``[1,O,K]``.
+
+Core optimization:
+    Encode the image once, expand features to ``[O,C,h,w]``, and batch the
+    prompt-conditioned decoder while preserving object token lengths.
+"""
 
 from __future__ import annotations
 
@@ -22,6 +32,7 @@ SAM3_1Model = SAM31Model
 
 
 def build_model(image_size: int = 64) -> SAM31Model:
+    """Build the multiplexed SAM 3.1 teaching model."""
     return SAM31Model(SAMConfig(image_size=image_size))
 
 

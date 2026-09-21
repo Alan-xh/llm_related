@@ -1,3 +1,9 @@
+"""GLM-4 教学模型推理入口。
+
+``<image>`` 在本例中是 byte-token 文本占位符；prompt 的 token shape 为
+[1, T]，模型输出 logits shape 为 [1, T_current, V]。
+"""
+
 from __future__ import annotations
 
 import sys
@@ -16,5 +22,10 @@ except ModuleNotFoundError:
     from architecture.glm.common import generation_cli
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """生成一个包含视觉 placeholder 的 GLM-4 风格回答。"""
     generation_cli(build_model, "Describe the image placeholder <image>.", chat=True)
+
+
+if __name__ == "__main__":
+    main()

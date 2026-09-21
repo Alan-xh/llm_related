@@ -1,4 +1,13 @@
-"""SAM-HQ-style decoder with an additional high-resolution feature path."""
+"""SAM-HQ teaching model with a high-resolution mask feature path.
+
+Task:
+    Promptable segmentation with images ``[B,3,H,W]`` and point/box prompts.
+    Outputs are masks ``[B,K,H,W]`` and IoU scores ``[B,K]``.
+
+Core mapping:
+    ``U_hq = U(image_feature) + Conv1x1(Interpolate(high_res_feature))``;
+    dynamic hypernetworks compute ``mask_k = hypernet_k(token_k) dot U_hq``.
+"""
 
 from __future__ import annotations
 
@@ -13,13 +22,14 @@ except ImportError:
 
 
 class HQSAMModel(PromptableSAM):
-    """Fuse projected image features into the dynamic mask embedding."""
+    """Fuse projected high-resolution image features into dynamic masks."""
 
     def __init__(self, config: SAMConfig | None = None) -> None:
         super().__init__(config or SAMConfig(), high_quality=True)
 
 
 def build_model(image_size: int = 64) -> HQSAMModel:
+    """Build SAM-HQ with the high-quality decoder branch enabled."""
     return HQSAMModel(SAMConfig(image_size=image_size))
 
 

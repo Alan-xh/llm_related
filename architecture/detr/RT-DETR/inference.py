@@ -1,4 +1,8 @@
-"""Decode predictions from compact RT-DETR."""
+"""RT-DETR 推理入口。
+
+模型从 encoder 的 ``[B,S,D]`` 多尺度 memory 中选择 top-k query，输出
+``pred_logits=[B,Q,K+1]``、``pred_boxes=[B,Q,4]`` 和 IoU 质量分数。
+"""
 
 from __future__ import annotations
 
@@ -19,6 +23,8 @@ except ImportError:
 
 
 def main() -> None:
+    """加载 RT-DETR checkpoint 并执行 IoU-aware query 推理。"""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--confidence", type=float, default=0.25)
     parser.add_argument("--checkpoint")
@@ -28,6 +34,7 @@ def main() -> None:
     device = torch.device(args.device)
     model = build_model().to(device).eval()
     load_checkpoint(model, args.checkpoint, device)
+    # decode_detections 仅使用主分支 logits/boxes，不需要 encoder proposal。
     with torch.no_grad():
         outputs = model(torch.rand(1, 3, args.image_size, args.image_size, device=device))
     detections = decode_detections(outputs, (args.image_size, args.image_size), args.confidence)

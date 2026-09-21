@@ -1,4 +1,8 @@
-"""Decode predictions from the compact DETR model."""
+"""DETR 推理与检测结果解码入口。
+
+输入为随机示例图像 ``[1,3,H,W]`` 和可选 checkpoint；模型输出
+``[1,Q,K+1]``、``[1,Q,4]``，随后转换为像素级 ``[N,6]`` 检测结果。
+"""
 
 from __future__ import annotations
 
@@ -18,6 +22,8 @@ except ImportError:
 
 
 def main() -> None:
+    """加载模型、执行无梯度推理并打印检测张量 Shape。"""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--confidence", type=float, default=0.25)
     parser.add_argument("--checkpoint")
@@ -27,6 +33,7 @@ def main() -> None:
     device = torch.device(args.device)
     model = build_model().to(device).eval()
     load_checkpoint(model, args.checkpoint, device)
+    # 推理阶段不构造目标，也不计算 denoising 或训练损失。
     with torch.no_grad():
         outputs = model(torch.rand(1, 3, args.image_size, args.image_size, device=device))
     detections = decode_detections(outputs, (args.image_size, args.image_size), args.confidence)

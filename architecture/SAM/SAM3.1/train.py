@@ -1,4 +1,10 @@
-"""Train the compact SAM 3.1 model through its single-concept path."""
+"""Training pipeline for the SAM 3.1 teaching model.
+
+The demo uses the single-concept forward path for simple optimization:
+images ``[B,3,H,W]`` plus text/point prompts produce masks ``[B,K,H,W]`` and
+scores ``[B,K]``. The multi-object ``[1,O,K,H,W]`` multiplex path is covered
+by the model and inference entry points.
+"""
 
 from __future__ import annotations
 
@@ -19,6 +25,7 @@ except ImportError:
 
 
 def main() -> None:
+    """Parse CLI options and train the SAM 3.1 concept path."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--steps", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=2)
@@ -40,6 +47,7 @@ def main() -> None:
             point_coords=points,
             point_labels=labels,
         )
+        # output["masks"]: [B,K,H,W]; output["iou_scores"]: [B,K].
         loss = mask_loss(output["masks"], target, output["iou_scores"])
         optimizer.zero_grad(set_to_none=True)
         loss.backward()

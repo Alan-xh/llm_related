@@ -1,4 +1,14 @@
-"""MobileSAM-style student encoder with the SAM prompt/mask interface."""
+"""MobileSAM teaching model with a lightweight student image encoder.
+
+Task:
+    Promptable segmentation with images ``[B,3,H,W]`` and outputs
+    masks ``[B,K,H,W]`` plus scores ``[B,K]``.
+
+Architecture and objective:
+    A depthwise-separable student produces ``[B,C,H/8,W/8]`` features for the
+    shared SAM prompt/mask interface. Distillation uses
+    ``MSE(normalize(student), normalize(stop_gradient(teacher)))``.
+"""
 
 from __future__ import annotations
 
@@ -35,11 +45,16 @@ class MobileSAMModel(PromptableSAM):
         super().__init__(config, image_encoder=TinyMobileImageEncoder(config))
 
     def student_embedding(self, images: Tensor) -> Tensor:
+        """Return student features ``[B,3,H,W] -> [B,C,H/8,W/8]``."""
         return self.encode_image(images)
 
 
 def distillation_loss(student_embedding: Tensor, teacher_embedding: Tensor) -> Tensor:
-    """Normalize both feature maps and regress the teacher embedding."""
+    """Regress normalized feature maps with scalar MSE loss.
+
+    Both inputs are ``[B,C,h,w]``; flattening changes them to ``[B,C*h*w]``
+    before L2 normalization and MSE.
+    """
     teacher_embedding = teacher_embedding.detach()
     student = torch.nn.functional.normalize(student_embedding.flatten(1), dim=-1)
     teacher = torch.nn.functional.normalize(teacher_embedding.flatten(1), dim=-1)
@@ -47,6 +62,7 @@ def distillation_loss(student_embedding: Tensor, teacher_embedding: Tensor) -> T
 
 
 def build_model(image_size: int = 64) -> MobileSAMModel:
+    """Build MobileSAM with a compact one-stage student encoder."""
     return MobileSAMModel(SAMConfig(image_size=image_size, encoder_depth=1))
 
 

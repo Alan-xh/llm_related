@@ -1,3 +1,9 @@
+"""GLM-4.6 教学模型推理入口。
+
+代码任务 prompt 编码为 shape [1, T]；后续生成步骤复用每层
+shape [1, n_kv_heads, T_cache, D] 的 KV cache，以展示长上下文接口。
+"""
+
 from __future__ import annotations
 
 import sys
@@ -16,5 +22,10 @@ except ModuleNotFoundError:
     from architecture.glm.common import generation_cli
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """生成一个 GLM-4.6 风格的 Python 代码回答。"""
     generation_cli(build_model, "Write a small Python function and explain it.", chat=True)
+
+
+if __name__ == "__main__":
+    main()

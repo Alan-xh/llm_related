@@ -1,4 +1,9 @@
-"""Generate and select FastSAM candidates from a point prompt."""
+"""Inference pipeline for FastSAM candidate generation and selection.
+
+The all-candidate path returns masks ``[1,N,H,W]`` and scores ``[1,N]``.
+The prompted path ranks them and returns top-K masks ``[1,K,H,W]`` and
+scores ``[1,K]``.
+"""
 
 from __future__ import annotations
 
@@ -19,6 +24,7 @@ except ImportError:
 
 
 def main() -> None:
+    """Load a checkpoint and run either all-candidate or point-selected inference."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--image-size", type=int, default=64)
     parser.add_argument("--checkpoint")
@@ -36,6 +42,7 @@ def main() -> None:
             point = torch.tensor([[[args.image_size / 2, args.image_size / 2]]], device=device)
             label = torch.ones(1, 1, dtype=torch.long, device=device)
             masks, scores = model(images, point, label)
+    # all-candidates: [1,N,H,W]/[1,N]; selected: [1,K,H,W]/[1,K].
     print("masks:", tuple(masks.shape), "scores:", tuple(scores.shape))
 
 

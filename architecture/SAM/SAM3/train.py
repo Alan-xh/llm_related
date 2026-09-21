@@ -1,4 +1,9 @@
-"""Train the compact SAM 3 concept path on synthetic rectangle prompts."""
+"""Training pipeline for the SAM 3 concept-segmentation teaching model.
+
+Text prompts become concept tokens ``[B,1,C]``. The model returns masks
+``[B,K,H,W]``, IoU scores ``[B,K]``, presence logits ``[B,1]``, and image
+features ``[B,C,H/8,W/8]``; the demo optimizes the mask/quality objective.
+"""
 
 from __future__ import annotations
 
@@ -19,6 +24,7 @@ except ImportError:
 
 
 def main() -> None:
+    """Parse CLI options and train the text-conditioned SAM 3 path."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--steps", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=2)
@@ -40,6 +46,7 @@ def main() -> None:
             point_coords=points,
             point_labels=labels,
         )
+        # output["masks"]: [B,K,H,W]; output["iou_scores"]: [B,K].
         loss = mask_loss(output["masks"], target, output["iou_scores"])
         optimizer.zero_grad(set_to_none=True)
         loss.backward()

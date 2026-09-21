@@ -1,4 +1,9 @@
-"""Run several text prompts through the SAM 3.1 multiplex path."""
+"""Inference pipeline for SAM 3.1 object-token multiplexing.
+
+One image ``[1,3,H,W]`` is encoded once for O text prompts. The decoder batch
+is reshaped to masks ``[1,O,K,H,W]`` and scores ``[1,O,K]`; token lengths are
+returned to preserve object identity.
+"""
 
 from __future__ import annotations
 
@@ -19,6 +24,7 @@ except ImportError:
 
 
 def main() -> None:
+    """Load a checkpoint and run the shared-image multi-prompt path."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prompts", nargs="+", default=["rectangle", "object", "shape"])
     parser.add_argument("--bucket-size", type=int, default=8)
@@ -35,6 +41,7 @@ def main() -> None:
             args.prompts,
             args.bucket_size,
         )
+    # output["masks"]: [1,O,K,H,W]; output["iou_scores"]: [1,O,K].
     print(
         "masks:",
         tuple(output["masks"].shape),

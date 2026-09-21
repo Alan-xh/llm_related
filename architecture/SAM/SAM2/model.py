@@ -1,4 +1,13 @@
-"""SAM 2-style image/video model with bounded streaming memory."""
+"""SAM 2 teaching model for promptable image and video segmentation.
+
+Task:
+    Segment a current frame and propagate it through video. Frames are
+    ``[B,3,H,W]``; outputs are masks ``[B,K,H,W]`` and scores ``[B,K]`` plus
+    bounded ``VideoMemory`` state.
+
+Core formula:
+    ``feature' = LayerNorm(feature + Attention(feature, memory, memory))``.
+"""
 
 from __future__ import annotations
 
@@ -20,10 +29,11 @@ except ImportError:
 
 
 class SAM2Model(_SAM2Model):
-    """Use the same prompt API for an image and for successive video frames."""
+    """Use the same prompt API for an image and successive video frames."""
 
 
 def build_model(image_size: int = 64) -> SAM2Model:
+    """Build SAM 2 with a four-frame streaming memory window."""
     return SAM2Model(SAMConfig(image_size=image_size, max_memory_frames=4))
 
 

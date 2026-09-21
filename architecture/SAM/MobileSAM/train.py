@@ -1,4 +1,9 @@
-"""Train the compact MobileSAM student on synthetic prompts."""
+"""Training pipeline for the MobileSAM student teaching model.
+
+Images follow ``[B,3,H,W]``; the lightweight encoder produces
+``[B,C,H/8,W/8]`` features and the shared decoder returns masks ``[B,K,H,W]``
+with scores ``[B,K]``. The common loss is ``20*BCE + Dice + IoU-MSE``.
+"""
 
 from __future__ import annotations
 
@@ -16,6 +21,7 @@ except ImportError:
 
 
 def main() -> None:
+    """Parse CLI options and run the MobileSAM synthetic training loop."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--steps", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=2)

@@ -1,3 +1,9 @@
+"""ChatGLM2 教学模型推理入口。
+
+完整 prompt 首轮输入 shape 为 [1, T]；后续 token 通过公共生成器以
+[1, 1] 增量输入，并复用每层 shape [1, 1, T_cache, D] 的 MQA KV cache。
+"""
+
 from __future__ import annotations
 
 import sys
@@ -16,6 +22,10 @@ except ModuleNotFoundError:
     from architecture.glm.common import generation_cli
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """生成一个解释 ChatGLM2 MQA 的回答。"""
     generation_cli(build_model, "解释 ChatGLM2 的 MQA。", chat=True)
 
+
+if __name__ == "__main__":
+    main()

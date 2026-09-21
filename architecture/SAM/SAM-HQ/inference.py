@@ -1,4 +1,8 @@
-"""Run point-prompt inference with SAM-HQ."""
+"""Inference pipeline for the SAM-HQ teaching model.
+
+Input images are ``[1,3,H,W]`` with a point prompt ``[1,1,2]``. The HQ
+decoder returns masks ``[1,K,H,W]`` and scores ``[1,K]``.
+"""
 
 from __future__ import annotations
 
@@ -19,6 +23,7 @@ except ImportError:
 
 
 def main() -> None:
+    """Load an optional checkpoint and run one high-quality prediction."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--image-size", type=int, default=64)
     parser.add_argument("--checkpoint")
@@ -35,6 +40,7 @@ def main() -> None:
             point,
             label,
         )
+    # masks: [1,K,H,W]; scores: [1,K].
     print("masks:", tuple(masks.shape), "scores:", tuple(scores.shape))
 
 

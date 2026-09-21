@@ -1,3 +1,10 @@
+"""Qwen3 教学模型 thinking/non-thinking 自回归推理入口。
+
+thinking 模式只改变 prompt 模板：在 assistant 区域追加 ``<think>``；
+网络仍是同一个 GQA + QK normalization + MoE decoder。编码后的输入 shape
+为 [1, T_prompt]，生成结果 shape 为 [1, T_prompt + T_new]。
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -19,12 +26,14 @@ except ModuleNotFoundError:
 
 
 def format_prompt(prompt: str, thinking: bool) -> str:
+    """将用户文本包装成 thinking 或直接回答的最小对话模板。"""
     if thinking:
         return f"<|user|>\n{prompt}\n<|assistant|>\n<think>\n"
     return f"<|user|>\n{prompt}\n<|assistant|>\n"
 
 
 def main() -> None:
+    """加载 Qwen3 教学模型，按 prompt 模式生成回答。"""
     parser = argparse.ArgumentParser(description="Generate with a tiny Qwen3-style MoE LM.")
     parser.add_argument("--prompt", default="Explain grouped-query attention.")
     parser.add_argument("--thinking", action="store_true")
@@ -41,8 +50,9 @@ def main() -> None:
         model.load_state_dict(state.get("model", state))
     tokenizer = ByteTokenizer()
     prompt = format_prompt(args.prompt, args.thinking)
-    input_ids = torch.tensor([tokenizer.encode(prompt)], device=device)
+    input_ids = torch.tensor([tokenizer.encode(prompt)], device=device)  # [1, T_prompt]
     output_ids = model.generate(input_ids, args.max_new_tokens, args.temperature, eos_token_id=2)
+    # generate 使用逐层 KV cache；输出包含 prompt，shape: [1, T_prompt + T_new]。
     print(tokenizer.decode(output_ids[0].tolist()))
 
 

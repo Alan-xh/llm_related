@@ -1,4 +1,9 @@
-"""Train the compact SAM-HQ model on synthetic prompts."""
+"""Training pipeline for the SAM-HQ teaching model.
+
+The decoder fuses the upsampled base feature with the projected high-resolution
+feature before producing masks ``[B,K,H,W]`` and scores ``[B,K]``. The common
+objective is ``20*BCE + Dice + IoU-MSE``.
+"""
 
 from __future__ import annotations
 
@@ -17,6 +22,7 @@ except ImportError:
 
 
 def main() -> None:
+    """Parse CLI options and train the high-quality mask path."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--steps", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=2)

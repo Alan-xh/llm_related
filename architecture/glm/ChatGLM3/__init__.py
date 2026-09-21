@@ -1,2 +1,5 @@
-"""ChatGLM3 teaching implementation."""
+"""ChatGLM3 工具调用与代码模板教学实现。
 
+工具调用以结构化文本表达，解析和执行由外部应用负责；模型输出 logits
+shape 为 [B, T, V]。
+"""

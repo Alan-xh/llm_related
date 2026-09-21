@@ -1,4 +1,9 @@
-"""Train the compact FastSAM candidate generator on synthetic prompts."""
+"""Training pipeline for the FastSAM candidate generator.
+
+The image encoder runs once per batch. It produces candidate masks
+``[B,N,H,W]`` and scores ``[B,N]``; point prompts select top-K outputs
+``[B,K,H,W]`` and ``[B,K]`` before the common segmentation loss is applied.
+"""
 
 from __future__ import annotations
 
@@ -17,6 +22,7 @@ except ImportError:
 
 
 def main() -> None:
+    """Parse CLI options and train the FastSAM candidate path."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--steps", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=2)

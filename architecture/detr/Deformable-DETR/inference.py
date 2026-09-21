@@ -1,4 +1,8 @@
-"""Decode predictions from compact Deformable-DETR."""
+"""Deformable-DETR 推理入口。
+
+输入图像为 ``[1,3,H,W]``；模型内部在多个尺度上围绕 reference point
+采样，输出 ``pred_logits=[1,Q,K+1]`` 和 ``pred_boxes=[1,Q,4]``。
+"""
 
 from __future__ import annotations
 
@@ -19,6 +23,8 @@ except ImportError:
 
 
 def main() -> None:
+    """执行无梯度多尺度检测并打印解码结果 Shape。"""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--confidence", type=float, default=0.25)
     parser.add_argument("--checkpoint")
@@ -28,6 +34,7 @@ def main() -> None:
     device = torch.device(args.device)
     model = build_model().to(device).eval()
     load_checkpoint(model, args.checkpoint, device)
+    # 推理只保留正常 query，不生成训练期辅助监督。
     with torch.no_grad():
         outputs = model(torch.rand(1, 3, args.image_size, args.image_size, device=device))
     print("image=0 detections:", tuple(

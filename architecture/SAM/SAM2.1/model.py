@@ -1,4 +1,13 @@
-"""SAM 2.1-style improved checkpoint wrapper around the streaming model."""
+"""SAM 2.1 teaching wrapper with expanded streaming memory.
+
+Task:
+    Preserve the SAM 2 frame API with a six-frame memory window. Input frames
+    are ``[B,3,H,W]`` and ``predict_frame`` returns masks ``[B,K,H,W]``,
+    scores ``[B,K]``, and updated ``VideoMemory``.
+
+The ``improved`` flag records the version distinction; this is not an official
+SAM 2.1 checkpoint reproduction.
+"""
 
 from __future__ import annotations
 
@@ -30,6 +39,7 @@ SAM2_1Model = SAM21Model
 
 
 def build_model(image_size: int = 64) -> SAM21Model:
+    """Build SAM 2.1 with ``max_memory_frames=6``."""
     return SAM21Model(SAMConfig(image_size=image_size, max_memory_frames=6))
 
 

@@ -1,4 +1,13 @@
-"""Train the compact SAM model on synthetic rectangle prompts."""
+"""Training pipeline for the SAM v1 teaching model.
+
+Data contract:
+    ``synthetic_segmentation_batch`` returns images ``[B,3,H,W]``, points
+    ``[B,2,2]``, labels ``[B,2]``, and targets ``[B,1,H,W]``.
+    The model returns masks ``[B,K,H,W]`` and scores ``[B,K]``.
+
+Objective:
+    ``L = 20*BCE + Dice + MSE(predicted_iou, detached_true_iou)``.
+"""
 
 from __future__ import annotations
 
@@ -16,6 +25,7 @@ except ImportError:
 
 
 def main() -> None:
+    """Parse CLI options and delegate the decoupled SAM training loop."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--steps", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=2)

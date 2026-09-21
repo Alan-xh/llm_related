@@ -1,4 +1,9 @@
-"""Run text-prompt concept segmentation with the compact SAM 3 model."""
+"""Inference pipeline for SAM 3 text-conditioned concept segmentation.
+
+The image input is ``[1,3,H,W]`` and one text prompt becomes ``[1,1,C]``.
+The output dictionary contains masks ``[1,K,H,W]``, IoU scores ``[1,K]``,
+presence logits ``[1,1]``, and image embeddings ``[1,C,H/8,W/8]``.
+"""
 
 from __future__ import annotations
 
@@ -19,6 +24,7 @@ except ImportError:
 
 
 def main() -> None:
+    """Load an optional checkpoint and run one text-prompt prediction."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prompt", default="rectangle")
     parser.add_argument("--image-size", type=int, default=64)
@@ -33,6 +39,7 @@ def main() -> None:
             torch.rand(1, 3, args.image_size, args.image_size, device=device),
             text_prompts=[args.prompt],
         )
+    # output["masks"]: [1,K,H,W]; output["presence_logits"]: [1,1].
     print(
         "masks:",
         tuple(output["masks"].shape),

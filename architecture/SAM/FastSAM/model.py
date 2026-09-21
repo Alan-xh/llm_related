@@ -1,4 +1,14 @@
-"""FastSAM-style all-instance candidates followed by prompt selection."""
+"""FastSAM teaching model: candidate generation followed by prompt ranking.
+
+Task:
+    Generate all candidate masks once, then select top candidates for a point
+    prompt. Candidate masks are ``[B,N,H,W]`` and scores ``[B,N]``; selected
+    outputs are ``[B,K,H,W]`` and ``[B,K]``.
+
+Core formula:
+    ``score = 0.5*model_score + 0.5*prompt_agreement``. This is a compact
+    educational approximation, not the official detector/NMS implementation.
+"""
 
 from __future__ import annotations
 
@@ -33,11 +43,13 @@ class FastSAMModel(nn.Module):
         )
 
     def generate_candidates(self, images: Tensor) -> tuple[Tensor, Tensor]:
+        """Return all mask logits ``[B,N,H,W]`` and scores ``[B,N]``."""
         features = self.image_encoder(images)
-        logits = self.mask_head(features)
+        logits = self.mask_head(features)  # [B,C,h,w] -> [B,N,h,w].
         masks = F.interpolate(
             logits, size=images.shape[-2:], mode="bilinear", align_corners=False
         )
+        # [B,N,h,w] -> [B,N,H,W].
         scores = self.score_head(features).sigmoid()
         return masks, scores
 
@@ -48,6 +60,11 @@ class FastSAMModel(nn.Module):
         point_coords: Optional[Tensor],
         point_labels: Optional[Tensor],
     ) -> tuple[Tensor, Tensor]:
+        """Rank candidates and return selected masks ``[B,K,H,W]``/scores ``[B,K]``.
+
+        Inputs are masks ``[B,N,H,W]``, scores ``[B,N]``, points ``[B,P,2]``,
+        and labels ``[B,P]``.
+        """
         if point_coords is not None:
             if point_labels is None:
                 raise ValueError("point_labels is required when point_coords is provided")
@@ -55,6 +72,7 @@ class FastSAMModel(nn.Module):
             x = point_coords[..., 0].round().long().clamp(0, width - 1)
             y = point_coords[..., 1].round().long().clamp(0, height - 1)
             flat_masks = masks.sigmoid().flatten(2)
+            # [B,N,H,W] -> [B,N,H*W] for point sampling.
             point_indices = (y * width + x)[:, None, :]
             sampled = flat_masks.gather(
                 2, point_indices.expand(-1, flat_masks.shape[1], -1)
@@ -79,16 +97,21 @@ class FastSAMModel(nn.Module):
         point_coords: Optional[Tensor] = None,
         point_labels: Optional[Tensor] = None,
     ) -> tuple[Tensor, Tensor]:
+        """Generate candidates and return the prompt-selected top-K outputs."""
         masks, scores = self.generate_candidates(images)
         return self.select_candidates(masks, scores, point_coords, point_labels)
 
     @torch.no_grad()
     def predict_all(self, images: Tensor) -> tuple[Tensor, Tensor]:
+        """Return the complete candidate bank ``[B,N,H,W]`` and ``[B,N]``."""
         return self.generate_candidates(images)
 
 
 def candidate_iou(boxes1: Tensor, boxes2: Tensor) -> Tensor:
-    """Pairwise IoU helper used when matching boxes to candidate instances."""
+    """Compute pairwise box IoU ``[N,4] x [M,4] -> [N,M]``.
+
+    The formula is ``intersection / (area1 + area2 - intersection)``.
+    """
     top_left = torch.maximum(boxes1[:, None, :2], boxes2[None, :, :2])
     bottom_right = torch.minimum(boxes1[:, None, 2:], boxes2[None, :, 2:])
     intersection = (bottom_right - top_left).clamp_min(0).prod(-1)
@@ -98,6 +121,7 @@ def candidate_iou(boxes1: Tensor, boxes2: Tensor) -> Tensor:
 
 
 def build_model(image_size: int = 64) -> FastSAMModel:
+    """Build a compact FastSAM candidate generator."""
     return FastSAMModel(SAMConfig(image_size=image_size))
 
 

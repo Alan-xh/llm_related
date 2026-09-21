@@ -1,4 +1,9 @@
-"""Run point-prompt inference with MobileSAM."""
+"""Inference pipeline for the MobileSAM teaching model.
+
+Images use ``[1,3,H,W]`` and a positive point prompt uses ``[1,1,2]`` plus
+labels ``[1,1]``. The shared SAM decoder returns masks ``[1,K,H,W]`` and
+quality scores ``[1,K]``.
+"""
 
 from __future__ import annotations
 
@@ -18,6 +23,7 @@ except ImportError:
 
 
 def main() -> None:
+    """Load an optional checkpoint and run one MobileSAM prediction."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--image-size", type=int, default=64)
     parser.add_argument("--checkpoint")
@@ -34,6 +40,7 @@ def main() -> None:
             point,
             label,
         )
+    # masks: [1,K,H,W]; scores: [1,K].
     print("masks:", tuple(masks.shape), "scores:", tuple(scores.shape))
 
 

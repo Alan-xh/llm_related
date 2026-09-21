@@ -1,3 +1,10 @@
+"""Qwen3 教学模型训练入口。
+
+训练流程与其他版本一致，但默认启用 top-k MoE。模型返回的 ``aux_loss``
+用于监控路由均衡情况，并由公共 forward 按公式
+``L_total = L_lm + 0.01 * L_aux`` 加入训练目标。
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -19,6 +26,7 @@ except ModuleNotFoundError:
 
 
 def main() -> None:
+    """训练 Qwen3 教学模型并打印语言模型与 MoE 辅助损失。"""
     parser = argparse.ArgumentParser(description="Train a tiny Qwen3-style MoE causal LM.")
     parser.add_argument("--steps", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=2)
@@ -35,10 +43,12 @@ def main() -> None:
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     model.train()
     for step in range(args.steps):
+        # inputs/labels shape: [B, T]；MoE 内部临时展平为 [B*T, H] 路由。
         inputs, labels = build_training_batch(
             tokenizer, args.text, args.batch_size, args.seq_len, step, device
         )
         output = model(inputs, labels=labels)
+        # output.logits: [B, T, V]；loss/aux_loss: []。
         optimizer.zero_grad(set_to_none=True)
         output.loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)

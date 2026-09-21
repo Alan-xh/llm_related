@@ -1,4 +1,18 @@
-"""Small SAM v1-style image segmentation model."""
+"""SAM v1 teaching model: promptable image segmentation.
+
+Task:
+    Segment objects from point, box, or mask prompts. Input images use
+    ``[B,3,H,W]``; point prompts use ``[B,N,2]`` and labels ``[B,N]``.
+
+Architecture:
+    Tiny ViT image encoder -> random Fourier prompt encoder -> Two-Way
+    Transformer -> dynamic mask hypernetworks. Outputs are masks
+    ``[B,K,H,W]`` and predicted IoU scores ``[B,K]``.
+
+Core mapping:
+    ``PE(x)=[sin(2*pi*B*x), cos(2*pi*B*x)]`` and
+    ``mask_k=hypernet_k(mask_token_k) dot upscaled_image_feature``.
+"""
 
 from __future__ import annotations
 
@@ -13,13 +27,18 @@ except ImportError:
 
 
 class SAMModel(PromptableSAM):
-    """ViT image encoder + prompt encoder + two-way mask decoder."""
+    """ViT image encoder + prompt encoder + two-way mask decoder.
+
+    The call contract is images ``[B,3,H,W]`` -> masks ``[B,K,H,W]`` and
+    scores ``[B,K]``.
+    """
 
 
 SegmentAnythingModel = SAMModel
 
 
 def build_model(image_size: int = 64) -> SAMModel:
+    """Build a compact SAM v1 model for square images of ``image_size``."""
     return SAMModel(SAMConfig(image_size=image_size))
 
 

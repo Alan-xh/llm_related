@@ -1,4 +1,8 @@
-"""Decode predictions from compact DAB-DETR."""
+"""DAB-DETR 推理入口。
+
+模型接收 ``[1,3,H,W]`` 图像，输出动态 anchor refinement 后的
+``pred_logits=[1,Q,K+1]``、``pred_boxes=[1,Q,4]``，再解码为像素框。
+"""
 
 from __future__ import annotations
 
@@ -19,6 +23,8 @@ except ImportError:
 
 
 def main() -> None:
+    """加载 DAB-DETR checkpoint 并输出检测结果 Shape。"""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--confidence", type=float, default=0.25)
     parser.add_argument("--checkpoint")
@@ -28,6 +34,7 @@ def main() -> None:
     device = torch.device(args.device)
     model = build_model().to(device).eval()
     load_checkpoint(model, args.checkpoint, device)
+    # decode_detections 会忽略 no-object 类并将 cxcywh 转成像素 xyxy。
     with torch.no_grad():
         outputs = model(torch.rand(1, 3, args.image_size, args.image_size, device=device))
     detections = decode_detections(outputs, (args.image_size, args.image_size), args.confidence)
