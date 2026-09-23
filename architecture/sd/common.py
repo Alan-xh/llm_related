@@ -1,8 +1,16 @@
-"""Small, readable building blocks for Stable Diffusion teaching models.
+"""Stable Diffusion 教学模型的公共模块与张量约定。
 
-The modules in this file deliberately use tiny dimensions and synthetic data.
-They are meant to make the tensor flow visible, not to load official
-checkpoints or reproduce the production training recipe.
+任务定义：提供潜空间扩散、文本条件编码、注意力和采样器的可复用组件。
+代表架构：Stable Diffusion、SDXL 与 Stable Diffusion 3 的简化教学实现。
+核心数据流：图像经 VAE 编码为潜变量，文本编码为上下文特征，去噪网络预测噪声/
+速度场，最后由采样器迭代更新潜变量并经 VAE 解码。
+核心目标：DDPM 加噪 z_t = sqrt(alpha_bar_t) z_0 + sqrt(1-alpha_bar_t) eps；
+流匹配路径 z_t = (1-t) z_0 + t eps；分类器自由引导
+f_guided = f_uncond + s (f_cond - f_uncond)。
+数据约定：图像/潜变量为 [B,C,H,W]，文本序列为 [B,T,C]，时间嵌入为 [B,D]。
+
+这里使用小型随机初始化模块和合成数据以展示张量流，不加载官方权重，
+也不复现官方模型规模或训练配方。
 """
 
 from __future__ import annotations
@@ -17,7 +25,11 @@ from torch.nn import functional as F
 
 
 def timestep_embedding(timesteps: Tensor, dim: int, max_period: int = 10_000) -> Tensor:
-    """Return sinusoidal timestep features with shape ``[B, dim]``."""
+    """将时间步编码为正弦位置特征。
+
+    输入 timesteps: [B]；输出: [B, dim]。偶数维使用 sin/cos 频率对，
+    奇数维在末尾补零。
+    """
 
     half = dim // 2
     frequencies = torch.exp(
@@ -33,6 +45,7 @@ def timestep_embedding(timesteps: Tensor, dim: int, max_period: int = 10_000) ->
 
 
 def _group_count(channels: int, requested: int = 32) -> int:
+    """选择不超过 requested 且可整除通道数的最大 GroupNorm 组数。"""
     for groups in range(min(requested, channels), 0, -1):
         if channels % groups == 0:
             return groups
@@ -40,7 +53,12 @@ def _group_count(channels: int, requested: int = 32) -> int:
 
 
 class ResBlock2D(nn.Module):
-    """A time-conditioned residual block used by the tiny U-Nets."""
+    """带扩散时间条件的二维残差块，供各版本 U-Net 复用。
+
+    输入/输出 x: [B,C,H,W]；时间嵌入: [B,D]；输出: [B,C_out,H,W]。
+    时间投影后广播为 [B,C_out,1,1] 并加到卷积特征上；
+    主支路与 identity/1x1 卷积捷径相加。
+    """
 
     def __init__(self, in_channels: int, out_channels: int, time_dim: int) -> None:
         super().__init__()
@@ -56,13 +74,17 @@ class ResBlock2D(nn.Module):
         )
 
     def forward(self, x: Tensor, time_embedding_value: Tensor) -> Tensor:
+        """处理特征图 x [B,C_in,H,W] 和时间向量 [B,D]，返回 [B,C_out,H,W]。"""
         hidden = self.conv1(F.silu(self.norm1(x)))
+        # [B,D] -> [B,C_out] -> [B,C_out,1,1]，按空间维广播注入时间条件。
         hidden = hidden + self.time_proj(time_embedding_value)[:, :, None, None]
         hidden = self.conv2(F.silu(self.norm2(hidden)))
         return self.skip(x) + hidden
 
 
 class FeedForward(nn.Module):
+    """逐 token 前馈网络：在特征维扩张、经过 GELU 后投影回原维度。"""
+
     def __init__(self, hidden_size: int, multiplier: int = 4) -> None:
         super().__init__()
         intermediate = hidden_size * multiplier
@@ -74,11 +96,17 @@ class FeedForward(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        """输入/输出形状均为 [B,T,C]，仅变换最后的特征维。"""
         return self.net(x)
 
 
 class Attention(nn.Module):
-    """Multi-head attention accepting query and context sequences."""
+    """支持独立 query 与 context 序列的多头注意力。
+
+    query: [B,N,Cq]，context: [B,M,Cctx]（省略时使用 query）；
+    输出: [B,N,Cq]。核心公式为 softmax(QK^T / sqrt(d))V，
+    其中 to_q/to_k/to_v 对应 Q/K/V，self.scale 对应 1/sqrt(d)。
+    """
 
     def __init__(
         self,
@@ -101,6 +129,7 @@ class Attention(nn.Module):
         self.to_out = nn.Linear(inner_dim, query_dim, bias=False)
 
     def forward(self, query: Tensor, context: Optional[Tensor] = None) -> Tensor:
+        """输入 query [B,N,Cq]、context [B,M,Cctx]，输出 [B,N,Cq]。"""
         context = query if context is None else context
         query = self.norm(query)
         context = self.context_norm(context)
@@ -109,11 +138,13 @@ class Attention(nn.Module):
         q = self.to_q(query).view(batch, query_length, self.heads, self.head_dim)
         k = self.to_k(context).view(batch, key_length, self.heads, self.head_dim)
         v = self.to_v(context).view(batch, key_length, self.heads, self.head_dim)
-        q = q.transpose(1, 2)
-        k = k.transpose(1, 2)
-        v = v.transpose(1, 2)
+        q = q.transpose(1, 2)  # [B,N,H,D] -> [B,H,N,D]
+        k = k.transpose(1, 2)  # [B,M,H,D] -> [B,H,M,D]
+        v = v.transpose(1, 2)  # [B,M,H,D] -> [B,H,M,D]
+        # scores = QK^T / sqrt(d)，softmax 后乘 V 得到每个 query 的加权上下文。
         weights = torch.matmul(q, k.transpose(-2, -1)) * self.scale
         weights = weights.softmax(dim=-1)
+        # [B,H,N,D] -> [B,N,H*D]，合并注意力头并映射回 query 特征维。
         output = torch.matmul(weights, v).transpose(1, 2).reshape(
             batch, query_length, self.heads * self.head_dim
         )
@@ -121,7 +152,12 @@ class Attention(nn.Module):
 
 
 class SpatialTransformer(nn.Module):
-    """Self-attention followed by text cross-attention over image features."""
+    """在二维图像特征上依次执行自注意力、文本交叉注意力和前馈变换。
+
+    输入/输出特征: [B,C,H,W]；文本 context: [B,T,Cctx]。
+    展平空间维后得到 [B,H*W,C] token 序列，处理后恢复原空间形状，
+    并通过残差投影与输入相加。
+    """
 
     def __init__(self, channels: int, context_dim: int, heads: int = 4) -> None:
         super().__init__()
@@ -138,30 +174,43 @@ class SpatialTransformer(nn.Module):
         self.proj_out = nn.Conv2d(channels, channels, 1)
 
     def forward(self, x: Tensor, context: Tensor) -> Tensor:
+        """输入 x [B,C,H,W]、context [B,T,Cctx]，输出 [B,C,H,W]。"""
         batch, channels, height, width = x.shape
         hidden = self.proj_in(self.norm(x))
-        tokens = hidden.flatten(2).transpose(1, 2)
+        tokens = hidden.flatten(2).transpose(1, 2)  # [B,C,H,W] -> [B,H*W,C]
         tokens = tokens + self.self_attn(tokens)
         tokens = tokens + self.cross_attn(tokens, context)
         tokens = tokens + self.ff(tokens)
-        hidden = tokens.transpose(1, 2).reshape(batch, channels, height, width)
+        hidden = tokens.transpose(1, 2).reshape(batch, channels, height, width)  # [B,H*W,C] -> [B,C,H,W]
         return x + self.proj_out(hidden)
 
 
 class DiagonalGaussianDistribution:
+    """由 VAE 编码器输出参数化的对角高斯后验分布。
+
+    parameters: [B,2C,H,W]，沿通道均分为均值与对数方差 [B,C,H,W]。
+    """
+
     def __init__(self, parameters: Tensor) -> None:
+        """拆分并限制 log-variance，避免指数运算数值溢出。"""
         self.mean, self.logvar = parameters.chunk(2, dim=1)
         self.logvar = self.logvar.clamp(-30.0, 20.0)
 
     def sample(self) -> Tensor:
+        """按 z = mean + exp(0.5*logvar)*epsilon 重参数化采样，输出 [B,C,H,W]。"""
         return self.mean + torch.exp(0.5 * self.logvar) * torch.randn_like(self.mean)
 
     def mode(self) -> Tensor:
+        """返回后验众数（均值），形状为 [B,C,H,W]。"""
         return self.mean
 
 
 class TinyVAE(nn.Module):
-    """A small convolutional VAE with an 8x spatial downsampling factor."""
+    """用于教学示例的卷积 VAE，编码器空间下采样 8 倍。
+
+    输入图像: [B,3,H,W]；后验参数: [B,2*latent_channels,H/8,W/8]；
+    潜变量: [B,latent_channels,H/8,W/8]；解码输出: [B,3,H,W]。
+    """
 
     def __init__(self, latent_channels: int = 4, base_channels: int = 32) -> None:
         super().__init__()
@@ -187,15 +236,17 @@ class TinyVAE(nn.Module):
         )
 
     def encode(self, images: Tensor, sample: bool = False) -> Tensor | DiagonalGaussianDistribution:
+        """将图像 [B,3,H,W] 编码为后验分布，或按 sample 选择潜变量样本。"""
         posterior = DiagonalGaussianDistribution(self.encoder(images))
         return posterior.sample() if sample else posterior
 
     def decode(self, latents: Tensor) -> Tensor:
+        """将潜变量 [B,latent_channels,h,w] 解码为图像 [B,3,8h,8w]。"""
         return self.decoder(latents)
 
 
 class ByteTokenizer:
-    """Dependency-free tokenizer that keeps the text conditioning inspectable."""
+    """无外部依赖的 UTF-8 字节 tokenizer，便于检查文本条件的张量流。"""
 
     pad_token_id = 0
     bos_token_id = 1
@@ -203,12 +254,14 @@ class ByteTokenizer:
     vocab_size = 259
 
     def encode(self, text: str, max_length: int = 64) -> list[int]:
+        """将单条文本编码为 BOS、字节 token 与 EOS 的整数序列（最长 max_length）。"""
         ids = [self.bos_token_id]
         ids.extend(byte + 3 for byte in text.encode("utf-8")[: max_length - 2])
         ids.append(self.eos_token_id)
         return ids
 
     def batch_encode(self, texts: Sequence[str], max_length: int = 64) -> tuple[Tensor, Tensor]:
+        """批量编码文本，返回 input_ids 与有效位掩码，形状均为 [B,max_length]。"""
         encoded = [self.encode(text, max_length) for text in texts]
         input_ids = torch.full(
             (len(encoded), max_length),
@@ -223,7 +276,10 @@ class ByteTokenizer:
 
 
 class TinyTextEncoder(nn.Module):
-    """A tiny CLIP/OpenCLIP-like contextual text encoder."""
+    """小型 CLIP/OpenCLIP 风格文本编码器。
+
+    token ID 与掩码: [B,T]；上下文输出: [B,T,D]；池化文本向量: [B,D]。
+    """
 
     def __init__(
         self,
@@ -252,6 +308,7 @@ class TinyTextEncoder(nn.Module):
         nn.init.normal_(self.position_embedding, std=0.02)
 
     def forward(self, input_ids: Tensor, attention_mask: Optional[Tensor] = None) -> tuple[Tensor, Tensor]:
+        """输入 token IDs [B,T] 和可选掩码 [B,T]，返回 token 特征 [B,T,D] 与池化特征 [B,D]。"""
         hidden = self.token_embedding(input_ids) + self.position_embedding[:, : input_ids.shape[1]]
         padding_mask = None if attention_mask is None else ~attention_mask
         hidden = self.encoder(hidden, src_key_padding_mask=padding_mask)
@@ -268,12 +325,16 @@ class TinyTextEncoder(nn.Module):
         prompts: Sequence[str],
         device: torch.device,
     ) -> tuple[Tensor, Tensor]:
+        """编码 B 条 prompt，返回上下文 [B,T,D] 和池化向量 [B,D]。"""
         input_ids, attention_mask = self.tokenizer.batch_encode(prompts, self.max_length)
         return self(input_ids.to(device), attention_mask.to(device))
 
 
 class DualTextEncoder(nn.Module):
-    """SDXL-style pair of text encoders with concatenated token features."""
+    """SDXL 风格的双文本编码器，在最后一维拼接 token 与池化特征。
+
+    输入为 B 条文本；输出 token 特征 [B,T,D1+D2] 和池化向量 [B,D1+D2]。
+    """
 
     def __init__(self, first_dim: int = 64, second_dim: int = 80, max_length: int = 64) -> None:
         super().__init__()
@@ -286,6 +347,7 @@ class DualTextEncoder(nn.Module):
         prompts: Sequence[str],
         device: torch.device,
     ) -> tuple[Tensor, Tensor]:
+        """分别编码 prompt 并拼接两路特征，维度由两个编码器的隐藏维相加。"""
         first_tokens, first_pooled = self.first.encode_prompts(prompts, device)
         second_tokens, second_pooled = self.second.encode_prompts(prompts, device)
         return torch.cat((first_tokens, second_tokens), dim=-1), torch.cat(
@@ -295,12 +357,18 @@ class DualTextEncoder(nn.Module):
 
 @dataclass
 class DDIMStepOutput:
+    """一次 DDIM 更新结果：前一时间步样本与预测的干净潜变量，形状均为 [B,C,H,W]。"""
+
     prev_sample: Tensor
     pred_original_sample: Tensor
 
 
 class DDIMScheduler:
-    """DDIM scheduler supporting epsilon and v-prediction parameterizations."""
+    """支持 epsilon 与 v-prediction 参数化的 DDIM 扩散调度器。
+
+    加噪公式 z_t=sqrt(alpha_bar_t)z_0+sqrt(1-alpha_bar_t)epsilon；
+    get_velocity 返回 v=sqrt(alpha_bar_t)epsilon-sqrt(1-alpha_bar_t)z_0。
+    """
 
     def __init__(
         self,
@@ -317,6 +385,7 @@ class DDIMScheduler:
         self.timesteps = torch.arange(num_train_timesteps - 1, -1, -1)
 
     def set_timesteps(self, num_inference_steps: int, device: torch.device) -> Tensor:
+        """创建从训练末端到 0 的推理时间步，输出 [num_inference_steps]。"""
         self.timesteps = torch.linspace(
             self.num_train_timesteps - 1,
             0,
@@ -326,14 +395,17 @@ class DDIMScheduler:
         return self.timesteps
 
     def add_noise(self, sample: Tensor, noise: Tensor, timesteps: Tensor) -> Tensor:
+        """按 DDPM 前向过程混合干净样本与噪声；输入/输出 [B,C,H,W]，时间步 [B]。"""
         alpha = self.alphas_cumprod.to(sample.device)[timesteps].view(-1, 1, 1, 1)
         return alpha.sqrt() * sample + (1.0 - alpha).sqrt() * noise
 
     def get_velocity(self, sample: Tensor, noise: Tensor, timesteps: Tensor) -> Tensor:
+        """计算 v-prediction 目标，sample、noise 与返回值均为 [B,C,H,W]。"""
         alpha = self.alphas_cumprod.to(sample.device)[timesteps].view(-1, 1, 1, 1)
         return alpha.sqrt() * noise - (1.0 - alpha).sqrt() * sample
 
     def step(self, model_output: Tensor, timestep: Tensor | int, sample: Tensor) -> DDIMStepOutput:
+        """将当前样本 [B,C,H,W] 更新到前一时间步，并返回 x0 估计。"""
         timestep_value = int(timestep.item()) if isinstance(timestep, Tensor) else int(timestep)
         matches = (self.timesteps == timestep_value).nonzero(as_tuple=False)
         step_index = int(matches[0].item()) if matches.numel() else 0
@@ -349,9 +421,11 @@ class DDIMScheduler:
             else torch.ones((), device=sample.device)
         )
         if self.prediction_type == "v_prediction":
+            # v 参数化反解 x0 与 epsilon；变量名分别对应预测干净样本与噪声。
             pred_original = alpha_t.sqrt() * sample - (1.0 - alpha_t).sqrt() * model_output
             epsilon = alpha_t.sqrt() * model_output + (1.0 - alpha_t).sqrt() * sample
         else:
+            # epsilon 参数化：由 z_t 与预测噪声反解干净样本。
             pred_original = (sample - (1.0 - alpha_t).sqrt() * model_output) / alpha_t.sqrt()
             epsilon = model_output
         direction = (1.0 - alpha_prev).clamp_min(0).sqrt() * epsilon
@@ -360,21 +434,29 @@ class DDIMScheduler:
 
 
 class FlowMatchScheduler:
-    """Euler solver for the linear flow-matching path data -> Gaussian noise."""
+    """数据到高斯噪声线性路径的 flow-matching Euler 求解器。
+
+    路径 z_t=(1-t)z_0+t*epsilon；模型目标速度 v=epsilon-z_0；
+    推理按 z_next=z_t+(t_next-t)*v 更新潜变量。
+    """
 
     def set_timesteps(self, num_inference_steps: int, device: torch.device) -> Tensor:
+        """生成从 1 到 0 的含端点时间网格，输出 [num_inference_steps+1]。"""
         return torch.linspace(1.0, 0.0, num_inference_steps + 1, device=device)
 
     def add_noise(self, sample: Tensor, noise: Tensor, timesteps: Tensor) -> Tensor:
+        """沿线性 flow 路径插值；sample/noise 与输出为 [B,C,H,W]，时间步为 [B]。"""
         t = timesteps.view(-1, 1, 1, 1)
         return (1.0 - t) * sample + t * noise
 
     def step(self, velocity: Tensor, timestep: Tensor, sample: Tensor, next_timestep: Tensor) -> Tensor:
+        """执行一次显式 Euler 更新，velocity/sample 形状均为 [B,C,H,W]。"""
         delta = next_timestep - timestep
         return sample + delta * velocity
 
 
 def classifier_free_guidance(unconditional: Tensor, conditional: Tensor, scale: float) -> Tensor:
+    """按 u+s(c-u) 合并无条件与有条件预测；三者形状均为 [B,C,H,W]。"""
     return unconditional + scale * (conditional - unconditional)
 
 
@@ -384,7 +466,10 @@ def build_toy_images(
     device: torch.device,
     step: int = 0,
 ) -> tuple[Tensor, list[str]]:
-    """Create deterministic colored gradients so training needs no dataset."""
+    """生成无需数据集的确定性彩色玩具图像。
+
+    返回图像 [B,3,H,W]（值域约为 [-1,1]）和长度为 B 的对应文本提示。
+    """
 
     axis = torch.linspace(-1.0, 1.0, image_size, device=device)
     yy, xx = torch.meshgrid(axis, axis, indexing="ij")
@@ -410,4 +495,5 @@ def build_toy_images(
 
 
 def count_parameters(module: nn.Module) -> int:
+    """统计模块中所有参数的标量总数。"""
     return sum(parameter.numel() for parameter in module.parameters())

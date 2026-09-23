@@ -1,3 +1,15 @@
+"""SDXL 风格双文本条件、Base/Refiner 潜空间扩散教学实现。
+
+任务定义：以双文本编码器特征和图像尺寸/裁剪元数据为条件生成图像。
+代表架构：Stable Diffusion XL 的双文本编码器及 Base/Refiner 两阶段流程。
+核心流程：双编码器 token 特征拼接后进入交叉注意力，pooled 特征与 6 维 time IDs
+共同形成附加条件；Base 与 Refiner 分别执行 DDIM 去噪。
+目标函数：L=MSE(epsilon_theta(z_t,t,c,p,time_ids),epsilon)，其中
+z_t=sqrt(alpha_bar_t)z0+sqrt(1-alpha_bar_t)epsilon。
+形状：潜变量 [B,C,h,w]；文本 token [B,T,D]、pooled [B,D]；
+time IDs [B,6]；去噪输出与潜变量同形。
+"""
+
 from __future__ import annotations
 
 import sys
@@ -34,6 +46,8 @@ except ImportError:
 
 @dataclass
 class SDXLConfig:
+    """SDXL 教学配置；text_dim/pooled_dim 应与双文本编码器输出匹配。"""
+
     image_size: int = 32
     latent_channels: int = 4
     base_channels: int = 40
@@ -44,7 +58,12 @@ class SDXLConfig:
 
 
 class SDXLUNet(nn.Module):
-    """Small SDXL-like U-Net with dual text and pooled/time-id conditioning."""
+    """融合 token 交叉注意力、pooled 文本和 time IDs 的 U-Net。
+
+    输入潜变量 [B,C,h,w]、时间步 [B]、文本上下文 [B,T,D]、
+    pooled 特征 [B,P]、time IDs [B,6]；输出 [B,C,h,w]。
+    附加条件按 concat(pooled,time_ids) 投影后加到时间嵌入。
+    """
 
     def __init__(self, config: SDXLConfig) -> None:
         super().__init__()
@@ -82,22 +101,31 @@ class SDXLUNet(nn.Module):
         pooled: Tensor,
         time_ids: Tensor,
     ) -> Tensor:
+        """处理潜变量与文本/尺寸条件，输出同形去噪预测 [B,C,h,w]。"""
         if timesteps.ndim == 0:
             timesteps = timesteps[None].expand(latents.shape[0])
         time = self.time_mlp(timestep_embedding(timesteps, self.config.time_dim))
+        # pooled [B,P] 与 time_ids [B,6] 拼接为 [B,P+6] 后投影至时间维。
         time = time + self.added_cond(torch.cat((pooled, time_ids), dim=-1))
         skip = self.attn1(self.down1(self.in_conv(latents), time), context)
-        hidden = self.downsample(skip)
+        hidden = self.downsample(skip)  # [B,C,h,w] -> [B,2C,ceil(h/2),ceil(w/2)]
         hidden = self.attn2(self.down2(hidden, time), context)
         hidden = self.mid_attn(self.mid(hidden, time), context)
-        hidden = self.upsample(hidden)
-        hidden = self.up(torch.cat((hidden, skip), dim=1), time)
+        hidden = self.upsample(hidden)  # 上采样回 skip 尺度：[B,2C,h/2,w/2] -> [B,C,h,w]
+        hidden = self.up(torch.cat((hidden, skip), dim=1), time)  # skip 拼接后通道翻倍
         hidden = self.up_attn(hidden, context)
         return self.out_conv(F.silu(self.out_norm(hidden)))
 
 
 class SDXLModel(nn.Module):
+    """封装 SDXL 风格 Base/Refiner 两阶段生成管线。
+
+    图像输入/输出 [B,3,H,W]；潜变量 [B,C,H/8,W/8]；
+    双编码器上下文 [B,T,D]、pooled 向量 [B,P]、尺寸条件 [B,6]。
+    """
+
     def __init__(self, config: SDXLConfig | None = None) -> None:
+        """创建 Base 与 Refiner 去噪器，并冻结 VAE 和双文本编码器。"""
         super().__init__()
         self.config = config or SDXLConfig()
         self.vae = TinyVAE(self.config.latent_channels)
@@ -112,9 +140,11 @@ class SDXLModel(nn.Module):
     def encode_prompts(
         self, prompts: Sequence[str], device: torch.device
     ) -> tuple[Tensor, Tensor]:
+        """返回双编码器拼接后的 token 上下文 [B,T,D] 与 pooled 特征 [B,P]。"""
         return self.text_encoder.encode_prompts(prompts, device)
 
     def _time_ids(self, batch_size: int, device: torch.device) -> Tensor:
+        """构造 [原高,原宽,裁剪上,裁剪左,目标高,目标宽]，返回 [B,6]。"""
         size = float(self.config.image_size)
         return torch.tensor(
             [size, size, 0.0, 0.0, size, size],
@@ -122,8 +152,9 @@ class SDXLModel(nn.Module):
         ).expand(batch_size, -1)
 
     def training_loss(self, images: Tensor, prompts: Sequence[str]) -> Tensor:
+        """计算 Base 网络的 epsilon 预测 MSE，输入图像 [B,3,H,W]，返回标量。"""
         with torch.no_grad():
-            latents = self.vae.encode(images).mode() * self.config.latent_scaling
+            latents = self.vae.encode(images).mode() * self.config.latent_scaling  # [B,3,H,W] -> [B,C,H/8,W/8]
             context, pooled = self.encode_prompts(prompts, images.device)
         timesteps = torch.randint(
             0, self.scheduler.num_train_timesteps, (images.shape[0],), device=images.device
@@ -144,6 +175,7 @@ class SDXLModel(nn.Module):
         device: torch.device | None = None,
         seed: int = 0,
     ) -> Tensor:
+        """先用 Base、再用 Refiner 执行 DDIM；输出 [B,3,H,W] 且值域为 [0,1]。"""
         device = device or next(self.parameters()).device
         generator = torch.Generator(device=device).manual_seed(seed)
         context, pooled = self.encode_prompts(prompts, device)
@@ -170,6 +202,7 @@ class SDXLModel(nn.Module):
                 timestep,
                 latents,
             ).prev_sample
+        # Refiner 接收 Base 的最终潜变量，继续沿其独立时间网格细化。
         for timestep in self.refiner_scheduler.set_timesteps(refiner_steps, device):
             timesteps = timestep.expand(len(prompts))
             unconditional_prediction = self.refiner(
@@ -190,6 +223,7 @@ class SDXLModel(nn.Module):
 
 
 def build_model() -> SDXLModel:
+    """按默认配置构建 SDXL 教学模型。"""
     return SDXLModel()
 
 

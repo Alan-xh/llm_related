@@ -1,4 +1,9 @@
-"""Compact YOLOv4-style detector with CSP blocks and a PAN-like neck."""
+"""YOLOv4 风格轻量目标检测教学模型。
+
+输入 [B, 3, H, W]，CSP 风格骨干提取三级特征，检测头输出 stride 8/16/32
+上的 [B, 5+C, H_i, W_i] 张量。配置开关控制是否启用融合颈部；
+本实现展示结构思路，不包含完整官方 SPP/PAN 与训练配方。
+"""
 
 from __future__ import annotations
 
@@ -15,13 +20,15 @@ except ImportError:
 
 @dataclass
 class YOLOv4Config(DetectorConfig):
+    """YOLOv4 教学配置；use_pan 控制公共 top-down neck 是否启用。"""
+
     width: int = 16
     use_spp: bool = True
     use_pan: bool = True
 
 
 class YOLOv4Detector(MultiScaleDetector):
-    """CSP-style backbone and feature fusion expose the main YOLOv4 ideas."""
+    """通过 CSP 风格骨干和可选多尺度融合展示 YOLOv4 的主要结构概念。"""
 
     def __init__(self, config: YOLOv4Config | None = None) -> None:
         self.config = config or YOLOv4Config()
@@ -36,4 +43,3 @@ if __name__ == "__main__":
     import torch
 
     print([tuple(output.shape) for output in build_model()(torch.rand(1, 3, 64, 64))])
-

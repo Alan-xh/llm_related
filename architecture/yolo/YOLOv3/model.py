@@ -1,4 +1,9 @@
-"""Compact YOLOv3-style detector with a three-level feature pyramid."""
+"""YOLOv3 风格的三级特征金字塔检测教学模型。
+
+输入 [B, 3, H, W]，经骨干与 top-down 融合后在 stride 8/16/32 上预测，
+输出各为 [B, 5+C, H_i, W_i]。配置保留经典 anchor 供学习参考，
+但当前共享检测头实际采用无锚框距离回归，并未消费 anchors。
+"""
 
 from __future__ import annotations
 
@@ -15,6 +20,8 @@ except ImportError:
 
 @dataclass
 class YOLOv3Config(DetectorConfig):
+    """YOLOv3 教学配置；anchors 为经典先验框记录，不参与当前简化头计算。"""
+
     width: int = 16
     anchors: tuple[tuple[tuple[float, float], ...], ...] = (
         ((10, 13), (16, 30), (33, 23)),
@@ -24,7 +31,7 @@ class YOLOv3Config(DetectorConfig):
 
 
 class YOLOv3Detector(MultiScaleDetector):
-    """The compact head is anchor-free in code; anchors remain explicit for study."""
+    """普通卷积骨干加多尺度融合头；检测输出为 anchor-free 距离格式。"""
 
     def __init__(self, config: YOLOv3Config | None = None) -> None:
         self.config = config or YOLOv3Config()
@@ -40,4 +47,3 @@ if __name__ == "__main__":
 
     model = build_model()
     print([tuple(output.shape) for output in model(torch.rand(1, 3, 64, 64))])
-

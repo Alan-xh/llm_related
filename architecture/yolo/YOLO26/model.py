@@ -1,9 +1,9 @@
-"""Compact YOLO26-style detector with a DFL-free dual-head design.
+"""YOLO26 风格 DFL-free 双头检测教学模型。
 
-YOLO26 is represented here as a current-generation end-to-end teaching
-variant: a one-to-many branch supplies dense supervision, while a one-to-one
-branch is decoded without NMS.  The implementation is intentionally tiny and
-does not claim checkpoint or operator compatibility with an official release.
+输入 [B, 3, H, W] 经共享 CSP 骨干与颈部后，由 one-to-many 分支提供密集监督，
+one-to-one 分支用于端到端候选预测；两分支均在 stride 8/16/32 输出
+[B, 5+C, H_i, W_i]。框距离由 softplus 保证非负。
+这是轻量教学抽象，不宣称与官方权重、算子或完整训练细节兼容。
 """
 
 from __future__ import annotations
@@ -21,12 +21,16 @@ except ImportError:
 
 @dataclass
 class YOLO26Config(DetectorConfig):
+    """YOLO26 教学配置；progressive_loss 控制是否附加 one-to-one 辅助损失。"""
+
     width: int = 16
     dfl_free: bool = True
     progressive_loss: bool = True
 
 
 class YOLO26Detector(DualHeadDetector):
+    """构造 DFL-free 双头检测器，并按配置启用渐进式辅助监督。"""
+
     def __init__(self, config: YOLO26Config | None = None) -> None:
         self.config = config or YOLO26Config()
         super().__init__(
@@ -45,4 +49,3 @@ if __name__ == "__main__":
 
     outputs = build_model()(torch.rand(1, 3, 64, 64))
     print({name: [tuple(item.shape) for item in values] for name, values in outputs.items()})
-

@@ -1,9 +1,18 @@
-"""Shared, small PyTorch components used by the YOLO teaching models.
+"""YOLO 教学模型共用组件。
 
-The code in this module intentionally favors readable tensor contracts over
-production throughput.  It is sufficient for shape experiments and tiny
-synthetic training runs, but it is not a replacement for the official
-Ultralytics or Darknet implementations.
+任务：多类别单阶段目标检测。输入图像为 [B, 3, H, W]，共享骨干输出
+stride 8/16/32 的多尺度特征；检测头输出边界框距离、目标置信度和类别 logits。
+常规头的通道数为 [B, 5+C, H_i, W_i]，DFL 风格头为
+[B, 4*regression_bins+1+C, H_i, W_i]。
+
+框解码使用中心点与四边距离：
+center = (grid_x + 0.5, grid_y + 0.5) * stride
+xyxy = (center - (left, top), center + (right, bottom)) * stride
+分类分数 = sigmoid(objectness) * sigmoid(class_logits)。
+当 regression_bins > 1 时，距离 d = sum_j softmax(z)_j * j。
+
+本模块强调易读的张量契约，适用于结构实验与小型合成数据训练，不等同于
+Darknet 或 Ultralytics 的完整官方实现。
 """
 
 from __future__ import annotations
@@ -18,6 +27,8 @@ from torch.nn import functional as F
 
 @dataclass
 class DetectorConfig:
+    """多尺度检测器的基础配置；stride 与输出特征层一一对应。"""
+
     num_classes: int = 3
     width: int = 16
     image_size: int = 64
@@ -25,7 +36,11 @@ class DetectorConfig:
 
 
 class ConvBNAct(nn.Module):
-    """Convolution, normalization, and activation used throughout the models."""
+    """卷积、批归一化与激活的基础单元。
+
+    输入/输出：[B, C_in, H, W] -> [B, C_out, H_out, W_out]。
+    H_out、W_out 由卷积核、步幅和 padding 决定；默认 SiLU，也支持 LeakyReLU/ReLU。
+    """
 
     def __init__(
         self,
@@ -49,10 +64,17 @@ class ConvBNAct(nn.Module):
             self.activation = nn.SiLU(inplace=True)
 
     def forward(self, x: Tensor) -> Tensor:
+        """执行 Conv -> BatchNorm -> Activation；输入输出均为 BCHW 张量。"""
         return self.activation(self.norm(self.conv(x)))
 
 
 class ResidualBlock(nn.Module):
+    """两层卷积残差块，保持空间尺寸和通道数不变。
+
+    数学映射：y = x + F(x)，其中 F 为 1x1 降维与 3x3 卷积。
+    输入/输出：[B, C, H, W] -> [B, C, H, W]。
+    """
+
     def __init__(self, channels: int, expansion: float = 0.5) -> None:
         super().__init__()
         hidden = max(8, int(channels * expansion))
@@ -66,7 +88,11 @@ class ResidualBlock(nn.Module):
 
 
 class CSPBlock(nn.Module):
-    """A compact CSP/C3-like block with a partial residual path."""
+    """轻量 CSP/C3 风格模块，将通道分为变换支路和直连支路。
+
+    数学映射：y = Conv1x1(cat(Blocks(Conv1x1(x)), Conv1x1(x)))。
+    输入/输出：[B, C, H, W] -> [B, C, H, W]；拼接处通道数临时变为 2*hidden。
+    """
 
     def __init__(self, channels: int, depth: int = 1) -> None:
         super().__init__()
@@ -77,11 +103,16 @@ class CSPBlock(nn.Module):
         self.out = ConvBNAct(hidden * 2, channels, 1)
 
     def forward(self, x: Tensor) -> Tensor:
+        """分支提取后沿通道维拼接，再投影回输入通道数。"""
         return self.out(torch.cat((self.blocks(self.left(x)), self.right(x)), dim=1))
 
 
 class SPPF(nn.Module):
-    """Fast spatial pyramid pooling used by YOLOv5-style models."""
+    """快速空间金字塔池化，以连续最大池化融合不同感受野。
+
+    输入/输出：[B, C, H, W] -> [B, C, H, W]。
+    拼接特征为 [x, pool(x), pool^2(x), pool^3(x)]，通道数为 4*hidden。
+    """
 
     def __init__(self, channels: int) -> None:
         super().__init__()
@@ -95,11 +126,17 @@ class SPPF(nn.Module):
         y1 = self.pool(x)
         y2 = self.pool(y1)
         y3 = self.pool(y2)
+        # 沿通道维拼接四个感受野分支：[B, hidden, H, W] -> [B, 4*hidden, H, W]。
         return self.expand(torch.cat((x, y1, y2, y3), dim=1))
 
 
 class TinyBackbone(nn.Module):
-    """Three-level CNN feature pyramid with strides 8, 16, and 32."""
+    """输出 stride 为 8、16、32 的三级轻量 CNN 特征金字塔。
+
+    输入：[B, 3, H, W]；输出依次为 P3=[B, 4W, H/8, W/8]、
+    P4=[B, 8W, H/16, W/16]、P5=[B, 8W, H/32, W/32]（H、W 需适配下采样）。
+    style 可选择普通残差块、CSP 风格块或末端 SPPF。
+    """
 
     def __init__(self, width: int = 16, style: str = "plain") -> None:
         super().__init__()
@@ -121,11 +158,17 @@ class TinyBackbone(nn.Module):
         p3 = self.block2(self.down2(x))
         p4 = self.block3(self.down3(p3))
         p5 = self.block4(self.down4(p4))
+        # 每次 down 卷积将空间分辨率减半；返回 stride 8/16/32 的特征。
         return [p3, p4, p5]
 
 
 class FeaturePyramidNeck(nn.Module):
-    """Small top-down/lateral neck, sufficient to show multi-scale fusion."""
+    """轻量自顶向下特征融合颈部，展示 FPN/PAN 类横向连接。
+
+    输入与输出均为 [P3, P4, P5]，各层 shape 不变。
+    融合公式：P4'=Conv(P4 + Up(Lateral(P5)))；
+    P3'=Conv(P3 + Up(Lateral(P4')))；nearest 上采样对齐目标层空间尺寸。
+    """
 
     def __init__(self, channels: Sequence[int]) -> None:
         super().__init__()
@@ -137,13 +180,18 @@ class FeaturePyramidNeck(nn.Module):
 
     def forward(self, features: Sequence[Tensor]) -> list[Tensor]:
         p3, p4, p5 = features
+        # 上采样到侧路特征尺寸后逐元素相加，空间尺寸回到 P4/P3 尺度。
         p4 = self.out4(p4 + F.interpolate(self.lateral4(p5), size=p4.shape[-2:], mode="nearest"))
         p3 = self.out3(p3 + F.interpolate(self.lateral3(p4), size=p3.shape[-2:], mode="nearest"))
         return [p3, p4, p5]
 
 
 class AnchorFreeHead(nn.Module):
-    """Decoupled objectness/classification and box regression head."""
+    """简化的无锚框检测头，分开预测框、目标置信度和类别。
+
+    输入：[B, C, H, W]；输出：[B, 4*R+1+num_classes, H, W]，
+    R 为 regression_bins。通道顺序为 box、objectness、classification。
+    """
 
     def __init__(self, channels: int, num_classes: int, regression_bins: int = 1) -> None:
         super().__init__()
@@ -155,11 +203,16 @@ class AnchorFreeHead(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         x = self.stem(x)
+        # 三个预测分支沿通道维合并，空间网格保持不变。
         return torch.cat((self.box(x), self.objectness(x), self.classification(x)), dim=1)
 
 
 class MultiScaleDetector(nn.Module):
-    """Anchor-free detector returning [B, 5+C, H_i, W_i] tensors."""
+    """共享骨干、可选颈部与多尺度无锚框检测头。
+
+    输入：[B, 3, H, W]；输出为 stride 8/16/32 的列表，
+    每层 shape 为 [B, 4*R+1+C, H_i, W_i]。
+    """
 
     def __init__(
         self,
@@ -181,11 +234,17 @@ class MultiScaleDetector(nn.Module):
     def forward(self, images: Tensor) -> list[Tensor]:
         features = self.backbone(images)
         features = self.neck(features)
+        # 每个特征层由对应检测头预测，输出列表与三个 stride 顺序一致。
         return [head(feature) for head, feature in zip(self.heads, features)]
 
 
 class YoloV1Detector(nn.Module):
-    """The original single-grid YOLOv1-style detector."""
+    """YOLOv1 单网格风格检测器。
+
+    输入：[B, 3, H, W]；输出：[B, S, S, C+10]，S 为 grid_size，C 为类别数。
+    每格包含 C 个类别 logits 和两个 (x, y, w, h, confidence) 框。
+    骨干连续下采样后经自适应池化映射到固定 SxS 网格。
+    """
 
     def __init__(self, num_classes: int = 3, grid_size: int = 7, width: int = 16) -> None:
         super().__init__()
@@ -204,11 +263,16 @@ class YoloV1Detector(nn.Module):
 
     def forward(self, images: Tensor) -> Tensor:
         output = self.head(self.pool(self.backbone(images)))
+        # 卷积输出 [B, C+10, S, S]，转为每个网格单元末维存放预测通道。
         return output.permute(0, 2, 3, 1).contiguous()
 
 
 class DualHeadDetector(nn.Module):
-    """A compact one-to-many plus one-to-one detector for YOLOv10/26 lessons."""
+    """共享多尺度特征的 one-to-many / one-to-one 双头检测器。
+
+    输入：[B, 3, H, W]；返回字典，两个分支各含 stride 8/16/32 的预测列表，
+    每层为 [B, 5+C, H_i, W_i]。是否对 one-to-one 分支施加辅助损失由训练器决定。
+    """
 
     def __init__(
         self,
@@ -230,6 +294,7 @@ class DualHeadDetector(nn.Module):
 
     def forward(self, images: Tensor) -> dict[str, list[Tensor]]:
         features = self.neck(self.backbone(images))
+        # 共享 backbone/neck，分别预测密集监督分支和一对一分支。
         return {
             "one_to_many": [head(x) for head, x in zip(self.one_to_many, features)],
             "one_to_one": [head(x) for head, x in zip(self.one_to_one, features)],
@@ -237,11 +302,17 @@ class DualHeadDetector(nn.Module):
 
 
 def _split_anchor_free(prediction: Tensor, regression_bins: int = 1) -> tuple[Tensor, Tensor, Tensor]:
+    """按约定通道布局拆分单层预测，输入 shape 为 [B, 4R+1+C, H, W]。"""
     box_end = 4 * regression_bins
     return prediction[:, :box_end], prediction[:, box_end : box_end + 1], prediction[:, box_end + 1 :]
 
 
 def _distribution_to_distance(box: Tensor, regression_bins: int) -> Tensor:
+    """将框回归 logits 转成四边距离，输入 [B, 4R, H, W]，输出 [B, 4, H, W]。
+
+    R=1 时使用 softplus 保证距离非负；R>1 时计算离散分布期望
+    d = sum_j softmax(z_j) * j。
+    """
     if regression_bins == 1:
         return F.softplus(box)
     values = torch.arange(regression_bins, device=box.device, dtype=box.dtype)
@@ -256,6 +327,10 @@ def _flatten_predictions(
     strides: Sequence[int],
     regression_bins: int = 1,
 ) -> tuple[Tensor, Tensor, Tensor]:
+    """将多尺度网格预测解码并展平为框 [B,N,4]、目标度 [B,N,1]、类别 [B,N,C]。
+
+    网格中心乘 stride 转为图像像素坐标；四边距离同样乘 stride 后还原 xyxy。
+    """
     boxes, objectness, classes = [], [], []
     for prediction, stride in zip(predictions, strides):
         box, obj, cls = _split_anchor_free(prediction, regression_bins)
@@ -280,6 +355,7 @@ def _flatten_predictions(
 
 
 def box_iou(boxes1: Tensor, boxes2: Tensor) -> Tensor:
+    """计算两组 xyxy 边界框两两 IoU，输出 shape 为 [N, M]。"""
     area1 = ((boxes1[:, 2] - boxes1[:, 0]).clamp_min(0) * (boxes1[:, 3] - boxes1[:, 1]).clamp_min(0))
     area2 = ((boxes2[:, 2] - boxes2[:, 0]).clamp_min(0) * (boxes2[:, 3] - boxes2[:, 1]).clamp_min(0))
     top_left = torch.maximum(boxes1[:, None, :2], boxes2[None, :, :2])
@@ -289,6 +365,7 @@ def box_iou(boxes1: Tensor, boxes2: Tensor) -> Tensor:
 
 
 def nms(boxes: Tensor, scores: Tensor, iou_threshold: float = 0.5) -> Tensor:
+    """按分数降序执行贪心 NMS，返回保留框在输入中的索引。"""
     keep: list[Tensor] = []
     order = scores.argsort(descending=True)
     while order.numel():
@@ -312,7 +389,11 @@ def decode_predictions(
     apply_nms: bool = True,
     max_detections: int = 100,
 ) -> list[Tensor]:
-    """Decode predictions into per-image [x1, y1, x2, y2, score, class] tensors."""
+    """解码多尺度预测为逐图检测结果，每项 shape 为 [N_i, 6]。
+
+    列顺序为 [x1, y1, x2, y2, score, class_id]；score 是目标度与类别概率乘积。
+    默认逐类别执行 NMS；apply_nms=False 时仅按分数截取 top-k。
+    """
     boxes, objectness, classes = _flatten_predictions(predictions, strides, regression_bins)
     image_h, image_w = image_size
     boxes[..., 0::2] = boxes[..., 0::2].clamp(0, image_w)
@@ -351,7 +432,11 @@ def yolo_loss(
     class_weight: float = 1.0,
     regression_bins: int = 1,
 ) -> Tensor:
-    """Loss for the teaching target format [tx, ty, tw, th, obj, one-hot classes]."""
+    """多尺度教学损失，target 通道为 [tx, ty, tw, th, obj, one_hot_classes]。
+
+    L = box_weight*SmoothL1(box) + objectness_weight*BCE(obj)
+        + class_weight*BCE(cls)。框与类别损失仅在正样本位置参与计算。
+    """
     total = predictions[0].new_zeros(())
     for prediction, target in zip(predictions, targets):
         box_pred, objectness_pred, class_pred = _split_anchor_free(prediction, regression_bins)
@@ -378,7 +463,11 @@ def yolo_v1_loss(
     lambda_coord: float = 5.0,
     lambda_noobj: float = 0.5,
 ) -> Tensor:
-    """Simplified YOLOv1 loss for [B, S, S, C + 10] predictions."""
+    """YOLOv1 简化损失，输入预测和 target 均为 [B, S, S, C+10]。
+
+    L = lambda_coord*L_coord + L_obj + lambda_noobj*L_noobj + L_class。
+    这是可读性优先的 MSE 教学实现，不包含完整 responsible-box IoU 分配。
+    """
     batch, grid, _, channels = predictions.shape
     classes = channels - 10
     pred_classes = predictions[..., :classes]
@@ -398,7 +487,7 @@ def build_single_target(
     image_size: int = 64,
     step: int = 0,
 ) -> list[Tensor]:
-    """Create deterministic one-box targets for a smoke-test training loop."""
+    """为合成训练构造确定性单框 target；每个尺度 shape 与预测对应。"""
     targets: list[Tensor] = []
     for level, prediction in enumerate(predictions):
         batch, _, height, width = prediction.shape
@@ -419,6 +508,7 @@ def build_single_target(
 def build_yolo_v1_target(
     batch_size: int, grid_size: int, num_classes: int, device: torch.device, step: int = 0
 ) -> Tensor:
+    """构造 YOLOv1 网格 target：[B, S, S, C+10]，供烟测训练使用。"""
     target = torch.zeros(
         batch_size, grid_size, grid_size, num_classes + 10, device=device
     )
@@ -430,7 +520,7 @@ def build_yolo_v1_target(
 
 
 def toy_images(batch_size: int, image_size: int, device: torch.device, step: int = 0) -> Tensor:
-    """Generate simple colored rectangles without requiring a dataset download."""
+    """生成彩色矩形合成图像：[B, 3, image_size, image_size]，无需下载数据集。"""
     images = torch.zeros(batch_size, 3, image_size, image_size, device=device)
     size = max(4, image_size // 4)
     for index in range(batch_size):
@@ -451,7 +541,7 @@ def train_detector(
     device: str = "cpu",
     checkpoint: str | None = None,
 ) -> None:
-    """Shared CLI loop for the version directories."""
+    """版本目录共用的合成数据训练循环：前向、损失、反向更新，可选保存权重。"""
     model = build_model().to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     model.train()
@@ -502,6 +592,7 @@ def infer_detector(
     nms_free: bool = False,
     device: str = "cpu",
 ) -> list[Tensor]:
+    """加载可选 checkpoint 并执行单张合成图推理，返回逐图 [N_i, 6] 检测结果。"""
     model = build_model().to(device).eval()
     if checkpoint:
         state = torch.load(checkpoint, map_location=device, weights_only=True)

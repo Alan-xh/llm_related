@@ -1,13 +1,14 @@
-# AI/ML 工程师后训练项目
+# AI/ML 学习与工程实践仓库
 
-这是一个围绕大语言模型、生成式 AI 和模型工程实践整理的学习与实验仓库。内容从数学基础、机器学习和 NLP，延伸到 LLM 训练与对齐、推理优化、视觉与语音、多模态以及可交付项目设计。
+这是一个围绕人工智能、机器学习和大模型工程整理的学习与实验仓库。内容覆盖数学基础、经典机器学习、NLP、LLM 训练与对齐、推理优化、计算机视觉、语音、多模态以及项目设计。
 
-仓库包含两类内容：
+仓库主要包含三类内容：
 
 - **学习资料**：结构化 Markdown 笔记、论文精读、面试题和自测题。
-- **动手实践**：可独立阅读的 PyTorch/Transformers 实验脚本、Notebook、模型组件实现和项目设计文档。
+- **代码实验**：PyTorch 模型实现、训练/推理脚本、Notebook 和部署示例。
+- **项目设计**：完整工程的目标、技术方案、里程碑与评估设计。
 
-根目录不是一个可以一键启动的单体应用，而是一组按主题组织的学习项目。不同子目录可能有独立的依赖、数据集、模型权重和运行方式。
+根目录不是可一键启动的单体应用，而是一组按主题组织的资料和独立实验。各子项目的依赖、数据集、模型权重、硬件要求和运行方式可能不同；运行前请优先查看对应目录的 README。
 
 ## 内容导航
 
@@ -22,8 +23,8 @@
 | [`machine_learning_tasks/`](./machine_learning_tasks/) | 分类、回归、检测、分割、生成、自监督、强化学习和模仿学习代码及笔记 |
 | [`mathematics_of_algorithms/`](./mathematics_of_algorithms/) | 优化理论、线性代数、矩阵分解、概率分布和随机过程 |
 | [`nlp/`](./nlp/) | HMM、CRF、N-gram、最短路径、分词和命名实体识别 |
-| [`paper/`](./paper/) | 从 AlexNet、Transformer、BERT、GPT 到 DPO、FlashAttention、DeepSeek-R1 的论文精读 |
-| [`自测/`](./自测/) | 与各主题对应的闭卷自测题，覆盖基础知识、训练、推理、对齐和工程实践 |
+| [`paper/`](./paper/) | AlexNet、Transformer、BERT、GPT、扩散模型、DPO、FlashAttention、DeepSeek-R1 等论文精读 |
+| [`自测/`](./自测/) | 按主题整理的闭卷题目，覆盖论文、基础、训练、推理、对齐、多模态和代码实现 |
 
 ### 实验与模型实现
 
@@ -42,6 +43,8 @@
 | [`inference_engines/`](./inference_engines/) | vLLM 与 SGLang 推理引擎核心技术的教学版实现 | `vllm/`、`sglang/` |
 | [`stable-diffusion/`](./stable-diffusion/) | Stable Diffusion/LDM、Chinese-CLIP、ONNX/TensorRT 部署与相关实验 | `stable-diffusion/`、`clip-vit/` |
 | [`voxcpm/`](./voxcpm/) | VoxCPM 连续空间 TTS、语音克隆和 Gradio/CLI 入口 | `app.py`、`main.py` |
+
+此外，[`paper/`](./paper/) 中的论文笔记与 [`自测/`](./自测/) 中的题目可配合代码实验使用。仓库也包含若干独立 Notebook，适合用于数据处理、训练记录和结果验证；它们不构成统一的测试套件。
 
 ### 项目设计
 
@@ -101,15 +104,15 @@ inference_engines/ + work_projects/
 - CPU 可用于阅读、运行部分 mock/demo、数据处理和不依赖 GPU kernel 的代码。
 - Node.js 仅在使用 Docsify 在线阅读笔记时需要。
 
-根目录使用 [`pyproject.toml`](./pyproject.toml) 管理基础依赖，同时保留了 [`uv.lock`](./uv.lock) 和现有的 [`requiremens.txt`](./requiremens.txt) 依赖快照。文件名 `requiremens.txt` 按仓库现状保留。
+根目录通过 [`pyproject.toml`](./pyproject.toml) 声明 Python `>=3.11` 和一组实验依赖，并保留 [`uv.lock`](./uv.lock) 锁定解析结果。该依赖集合包含 PyTorch、音频/视觉库以及平台相关组件，不是所有子项目都必须安装的轻量通用环境。仓库另有历史依赖快照 [`requiremens.txt`](./requiremens.txt)（文件名按现状保留）；它同样可能包含 CUDA/TensorRT 等平台相关依赖。
 
-使用 uv 安装根目录基础环境：
+如需按根目录配置创建环境，可使用：
 
 ```bash
 uv sync
 ```
 
-也可以使用 Python 虚拟环境后安装依赖：
+`uv sync` 会尝试安装根 `pyproject.toml` 声明的整组依赖，可能耗费较多磁盘空间，且在不支持的操作系统、Python 或 CUDA 环境中失败。更稳妥的做法是为目标子项目单独创建环境，并按其 README 安装所需依赖；不要仅为阅读笔记而安装整组依赖。若要使用历史 requirements 快照：
 
 ```bash
 python -m venv .venv
@@ -123,13 +126,13 @@ source .venv/bin/activate
 pip install -r requiremens.txt
 ```
 
-不同实验还可能需要额外安装 `datasets`、`peft`、`trl`、`vllm`、`deepspeed` 等未统一纳入根目录依赖的包。请以对应子目录的代码和 README 为准，不建议为了运行单个实验安装所有依赖。
+requirements 快照未必适用于当前平台。不同实验还可能需要 `datasets`、`peft`、`trl`、`vllm`、`deepspeed` 等额外依赖；以对应子目录文档和脚本为准。
 
 ## 快速运行示例
 
-以下命令均从仓库根目录执行。训练前请先准备对应的数据集和模型，并检查脚本中的路径配置。
+请按各代码块中的工作目录执行示例。运行训练前准备对应的数据集和模型，并检查脚本中的路径、显存和输出目录配置；这些命令展示的是入口，不代表默认配置可在任意机器上直接运行。
 
-### 从零训练小型 LLM
+### 小型 LLM：预训练、SFT 与 DPO
 
 [`train_llm_from_scratch/README.md`](./train_llm_from_scratch/README.md) 使用了 minimind 数据格式，支持预训练、SFT 和 DPO：
 
@@ -153,7 +156,7 @@ torchrun --nproc_per_node=2 train.py
 torchrun --nproc_per_node=2 sft_train.py
 ```
 
-### MoE 训练
+### MoE：预训练与 SFT
 
 ```bash
 cd train_moe_from_scratch
@@ -192,24 +195,26 @@ python scripts/txt2img.py --prompt "一张宇航员骑马的照片" --plms
 
 ### VoxCPM
 
-VoxCPM 提供 Gradio 页面、Python 推理示例和统一 CLI。模型可从 Hugging Face 加载，也可以通过参数指定本地模型：
+VoxCPM 提供 Gradio 页面、Python 推理示例和 CLI。CLI 示例应从 `voxcpm/` 项目目录运行，以便正确解析其本地 Python 包：
 
 ```bash
+cd voxcpm
+
 # 直接文本转语音
-python -m voxcpm.voxcpm.cli --text "你好，欢迎使用 VoxCPM。" --output output.wav
+python -m voxcpm.cli --text "你好，欢迎使用 VoxCPM。" --output output.wav
 
 # 参考音频语音克隆
-python -m voxcpm.voxcpm.cli --text "这是一段语音克隆示例。" --prompt-audio voice.wav --prompt-text "参考音频对应的文本。" --output cloned.wav
+python -m voxcpm.cli --text "这是一段语音克隆示例。" --prompt-audio voice.wav --prompt-text "参考音频对应的文本。" --output cloned.wav
 
 # 启动 Gradio demo
-python voxcpm/app.py
+python app.py
 ```
 
-模型、ASR 和 ZipEnhancer 权重可能需要联网下载；显存、模型缓存和音频文件要求见 [`voxcpm/README.md`](./voxcpm/README.md) 及对应源码。
+模型和 ZipEnhancer 权重可能需要联网下载；Gradio demo 还使用 ASR。模型缓存、依赖和音频输入要求见 [`voxcpm/README.md`](./voxcpm/README.md) 及对应源码。
 
 ## 在线阅读笔记
 
-LLM 和 CV 笔记使用 Docsify 目录结构，可以分别启动：
+LLM 和 CV 笔记提供 Docsify 配置，可分别启动本地预览：
 
 ```bash
 npm install -g docsify-cli
@@ -218,22 +223,23 @@ docsify serve llm_interview_note
 docsify serve cv_interview_note
 ```
 
-默认浏览器地址为 `http://localhost:3000`。如果端口冲突，可以通过 Docsify 参数指定其他端口，例如：
+默认地址为 `http://localhost:3000`。如端口被占用，可指定其他端口：
 
 ```bash
 docsify serve llm_interview_note --port 3001
 ```
 
-语音笔记、机器学习、数学和论文目录以普通 Markdown 文件为主，可直接在编辑器中阅读。
+语音笔记、机器学习、数学、NLP、论文和自测目录以 Markdown 文件为主，可直接在编辑器或支持 Markdown 的知识库工具中阅读。
 
 ## 数据、模型与路径说明
 
-- 仓库中的训练脚本大多是研究和学习用途，数据集与模型权重不随仓库提供。
+- 仓库中的训练脚本主要用于研究和学习，数据集与大多数预训练模型权重不随仓库提供。
 - 部分脚本仍保留作者本地路径，例如 `/home/user/...`。在运行前需要改成当前机器上的模型、数据和输出目录。
-- `train_llm_from_scratch/` 与 `train_moe_from_scratch/` 的 README 参考了 [`minimind`](https://github.com/jingyaogong/minimind) 数据和训练组织方式。
+- `train_llm_from_scratch/` 与 `train_moe_from_scratch/` 的 README 提供了数据准备参考；请按各脚本实际配置调整数据路径和格式。
 - 多模态实验需要 Qwen、SigLIP 以及图文数据集；具体版本和数据来源见 [`train_multimodal_from_scratch/README.md`](./train_multimodal_from_scratch/README.md)。
 - Stable Diffusion 和 Chinese-CLIP 的权重、许可证及安全限制请阅读其各自的模型卡和子项目 README。
 - VoxCPM 的音频输出默认按 16 kHz 保存，参考音频和模型下载可能产生较大的磁盘占用。
+- Triton、TensorRT、DeepSpeed 等实验通常依赖特定 GPU、CUDA、驱动或操作系统版本；请单独核对对应脚本的要求。
 
 ## 代码与文档约定
 
@@ -241,6 +247,7 @@ docsify serve llm_interview_note --port 3001
 - Python 脚本优先保证单文件可读性，很多实现是教学版或实验性代码，不等同于生产级框架。
 - Notebook 用于训练记录、数据处理、验证和可视化；运行前请确认工作目录、模型路径和 GPU 设置。
 - `work_projects/` 中的 `DESIGN.md` 是项目设计与里程碑文档，尚不表示对应工程已经全部实现。
+- 本仓库没有统一的安装后验收命令或覆盖全部目录的自动化测试；应针对选定的子项目运行其示例或测试入口。
 
 ## 许可证与致谢
 
