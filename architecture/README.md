@@ -18,6 +18,7 @@
 | [`SAM/`](./SAM/) | SAM、MobileSAM、FastSAM、SAM-HQ、SAM2、SAM2.1、SAM3、SAM3.1 | Promptable 图像/视频分割 |
 | [`qwen/`](./qwen/) | Qwen1、Qwen1.5、Qwen2、Qwen2.5、Qwen3 | Decoder-only 语言模型 |
 | [`glm/`](./glm/) | GLM-130B、ChatGLM、ChatGLM2、ChatGLM3、GLM-4、GLM-4.5、GLM-4.6、GLM-4.7 | 生成式语言模型 |
+| [`kimi/`](./kimi/) | Kimi K2、Kimi Linear | MLA/MoE 与线性注意力混合语言模型 |
 | [`sd/`](./sd/) | Stable Diffusion v1、v2、SDXL、SD3、SD3.5 | 文生图潜空间扩散 |
 | [`wan/`](./wan/) | Wan2.1、Wan2.2 | 文生视频/图生视频扩散 Transformer |
 
@@ -72,6 +73,13 @@
 | `GLM-4.5` | 引入面向 agentic reasoning 和 coding 的混合推理能力，强化复杂任务分解与工具使用。 |
 | `GLM-4.6` | 继续优化长上下文、代码生成和智能体工作流，提升多步任务的稳定性。 |
 | `GLM-4.7` | 强化 thinking-before-acting、终端操作和多语言智能体编程能力。 |
+
+### Kimi
+
+| 版本 | 核心创新 |
+| --- | --- |
+| `Kimi K2` | 使用 Multi-head Latent Attention、top-k MoE 和 shared expert，面向长上下文与 agent 工具使用。 |
+| `Kimi Linear` | 用 Kimi Delta Attention 的有限状态记忆替代大部分全局注意力，并按 3:1 比例混合 KDA 与 MLA。 |
 
 ### Stable Diffusion
 
@@ -128,6 +136,9 @@ architecture/
 │   ├── Qwen2/
 │   ├── Qwen2.5/
 │   └── Qwen3/
+├── kimi/
+│   ├── Kimi-K2/
+│   └── Kimi-Linear/
 ├── sd/
 │   ├── SD-v1/
 │   ├── SD-v2/
