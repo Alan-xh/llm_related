@@ -490,6 +490,8 @@ if __name__ == "__main__":
 
 PPO 是一种**在策略 (On-Policy)** 的 Actor-Critic 强化学习 Pipeline。整体交互与训练数据流如下：
 
+![PPO 在策略采样、优势估计与参数更新闭环](assets/ppo_training_loop.svg)
+
 ```
 +-----------------------------------------------------------------------------------+
 |                                 PPO Pipeline                                      |
@@ -542,6 +544,14 @@ PPO 是一种**在策略 (On-Policy)** 的 Actor-Critic 强化学习 Pipeline。
 ---
 
 ## 3. 核心公式与代码映射
+
+策略比率裁剪的作用可从目标曲线看出：正优势样本限制比率继续增大，负优势样本限制比率继续减小，避免单次更新过度改变策略。
+
+![PPO 裁剪替代目标对正负优势样本的限制](assets/ppo_clipped_objective.svg)
+
+GAE 将一步 TD 残差向过去递归累加；episode 结束时通过 `done` 掩码停止 bootstrap 和递归。
+
+![GAE 从后向前累加 TD 残差并由终止掩码截断](assets/gae_backward_recursion.svg)
 
 | 数学原理 / 目标公式 | 对应代码实现名称 / 位置 | 代码表达式 |
 | --- | --- | --- |

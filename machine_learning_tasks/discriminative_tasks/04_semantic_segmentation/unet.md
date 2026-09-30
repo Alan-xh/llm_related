@@ -4,6 +4,14 @@
 
 U-Net 是一种基于全卷积神经网络 (FCN) 的对称 Encoder-Decoder 语义分割架构。它通过下采样提取多尺度上下文语义，再通过上采样与跨层通道拼接 (Skip Connection) 恢复图像的空间细节。
 
+### 卷积计算与维度变化
+
+![卷积计算过程、公式与维度变化](assets/convolution_process.svg)
+
+### 反卷积（转置卷积）计算与维度变化
+
+![反卷积计算过程、公式与维度变化](assets/transposed_convolution_process.svg)
+
 ```
 [Input Image: Bx3x128x128]
        │

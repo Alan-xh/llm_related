@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Mamba 选择性状态空间扫描</title>
+  <desc id="desc">展示 Mamba 输入投影、因果卷积、选择性参数和递归状态扫描，最后输出语言模型 logits。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0,0 L12,6 L0,12 Z" fill="#315b78"/></marker>
+    <style>
+      .sans { font-family: "Noto Sans CJK SC", "Microsoft YaHei", "PingFang SC", Arial, sans-serif; }
+      .title { font-size: 34px; font-weight: 700; fill: #fff; }
+      .section { font-size: 22px; font-weight: 700; fill: #123b56; }
+      .label { font-size: 18px; font-weight: 700; fill: #123b56; }
+      .body { font-size: 16px; fill: #314b5c; }
+      .small { font-size: 14px; fill: #526b78; }
+      .box { stroke: #315b78; stroke-width: 2; rx: 10; }
+      .arrow { stroke: #315b78; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+      .thin { stroke: #71909a; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1600" height="900" fill="#f7fafb"/>
+  <rect width="1600" height="88" fill="#123b56"/>
+  <text x="52" y="57" class="sans title">Mamba：选择性状态空间模型的扫描路径</text>
+  <text x="1548" y="54" text-anchor="end" class="sans small" fill="#d8edf0">Selective SSM · O(L) sequence scan</text>
+
+  <text x="72" y="132" class="sans section">单个 Mamba Block 的主路径</text>
+  <rect x="72" y="165" width="220" height="64" class="box" fill="#d8edf0"/>
+  <text x="182" y="193" text-anchor="middle" class="sans label">Token Embedding</text><text x="182" y="215" text-anchor="middle" class="sans small">x ∈ R[B,L,d_model]</text>
+  <path d="M292 197 H375" class="arrow"/>
+  <rect x="375" y="155" width="240" height="84" class="box" fill="#f6e2bd"/>
+  <text x="495" y="188" text-anchor="middle" class="sans label">in_proj + 门控分流</text><text x="495" y="214" text-anchor="middle" class="sans small">u，z ∈ R[B,L,d_inner]</text>
+  <path d="M615 197 H700" class="arrow"/>
+  <rect x="700" y="155" width="240" height="84" class="box" fill="#f2cfb1"/>
+  <text x="820" y="188" text-anchor="middle" class="sans label">因果 Conv1d</text><text x="820" y="214" text-anchor="middle" class="sans small">局部模式 + SiLU(u)</text>
+  <path d="M940 197 H1025" class="arrow"/>
+  <rect x="1025" y="155" width="250" height="84" class="box" fill="#c9e7e2"/>
+  <text x="1150" y="188" text-anchor="middle" class="sans label">x_proj 选择性参数</text><text x="1150" y="214" text-anchor="middle" class="sans small">Δ，B，C 随 token 变化</text>
+  <path d="M1275 197 H1360" class="arrow"/>
+  <rect x="1360" y="155" width="180" height="84" class="box" fill="#e5f0d5"/>
+  <text x="1450" y="188" text-anchor="middle" class="sans label">out_proj</text><text x="1450" y="214" text-anchor="middle" class="sans small">残差输出</text>
+
+  <text x="72" y="322" class="sans section">沿序列维度递归扫描：每个 token 读写同一个隐状态</text>
+  <rect x="120" y="365" width="180" height="66" class="box" fill="#d8edf0"/><text x="210" y="394" text-anchor="middle" class="sans label">x₁ / Δ₁,B₁,C₁</text><text x="210" y="416" text-anchor="middle" class="sans small">初始化 h₀</text>
+  <rect x="440" y="365" width="180" height="66" class="box" fill="#c9e7e2"/><text x="530" y="394" text-anchor="middle" class="sans label">x₂ / Δ₂,B₂,C₂</text><text x="530" y="416" text-anchor="middle" class="sans small">更新 h₁ → h₂</text>
+  <rect x="760" y="365" width="180" height="66" class="box" fill="#c9e7e2"/><text x="850" y="394" text-anchor="middle" class="sans label">x₃ / Δ₃,B₃,C₃</text><text x="850" y="416" text-anchor="middle" class="sans small">更新 h₂ → h₃</text>
+  <rect x="1080" y="365" width="180" height="66" class="box" fill="#c9e7e2"/><text x="1170" y="394" text-anchor="middle" class="sans label">… xₜ …</text><text x="1170" y="416" text-anchor="middle" class="sans small">顺序扫描至 L</text>
+  <path d="M300 398 H440" class="arrow"/><path d="M620 398 H760" class="arrow"/><path d="M940 398 H1080" class="arrow"/>
+  <path d="M1170 431 V475 H210 V431" class="thin"/>
+  <text x="560" y="468" class="sans small">状态沿时间传递，不能访问未来 token；实现可用 parallel scan 加速</text>
+
+  <rect x="160" y="545" width="570" height="158" class="box" fill="#fff"/>
+  <text x="190" y="580" class="sans label">离散化后的状态更新</text>
+  <text x="190" y="622" class="sans body">hₜ = Āₜ ⊙ hₜ₋₁ + B̄ₜ ⊙ xₜ</text>
+  <text x="190" y="658" class="sans body">yₜ = Cₜ ⊙ hₜ + D ⊙ xₜ</text>
+  <text x="190" y="688" class="sans small">Āₜ = exp(Δₜ A)，Δₜ 由当前输入选择</text>
+
+  <rect x="820" y="545" width="570" height="158" class="box" fill="#fff"/>
+  <text x="850" y="580" class="sans label">为什么是“选择性”</text>
+  <text x="850" y="620" class="sans body">Δₜ、Bₜ、Cₜ 由 xₜ 动态生成，决定记忆多少、</text>
+  <text x="850" y="650" class="sans body">写入什么、读取什么；不像固定卷积核那样恒定。</text>
+  <text x="850" y="686" class="sans small">复杂度：序列长度 L 上线性 O(L)，显存不构造 L×L 注意力矩阵。</text>
+
+  <path d="M1450 239 V770 H1200" class="thin"/>
+  <rect x="980" y="760" width="410" height="64" class="box" fill="#e5f0d5"/>
+  <text x="1185" y="788" text-anchor="middle" class="sans label">LayerNorm + lm_head</text><text x="1185" y="810" text-anchor="middle" class="sans small">[B,L,d_model] → [B,L,vocab]</text>
+</svg>

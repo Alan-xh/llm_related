@@ -4,6 +4,8 @@
 
 本模型实现了基于 **Mamba (Selective State Space Model, S6)** 的多维特征连续值回归架构。该模型通过将多维表格特征序列化投影，结合输入驱动的选择性离散化机制（Selective Mechanism）与深度局部卷积，实现了对表格数据的非线性序列化依赖表征与无界连续值回归。
 
+![表格特征序列化、Mamba 扫描与全局池化](assets/feature_tokenization_pooling.svg)
+
 ### 数据流拓扑图 (Data Flow Diagram)
 
 ```text

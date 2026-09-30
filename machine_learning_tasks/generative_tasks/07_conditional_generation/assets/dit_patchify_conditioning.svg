@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
+  <title id="title">Conditional DiT 的 Patchify 与条件调制</title>
+  <desc id="desc">展示噪声图像切分为 patch token，时间和类别条件通过 adaLN-Zero 调制 Transformer，再还原为噪声图像。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#315b78"/></marker>
+    <style>
+      .font{font-family:"Noto Sans CJK SC","Microsoft YaHei",Arial,sans-serif}
+      .title{font-size:30px;font-weight:700;fill:#fff}.head{font-size:20px;font-weight:700;fill:#123b56}
+      .body{font-size:16px;fill:#314b5c}.small{font-size:14px;fill:#526b78}.shape{font-size:15px;font-family:Arial,sans-serif;fill:#526b78}
+    </style>
+  </defs>
+  <rect width="1200" height="700" fill="#f7fafb"/>
+  <rect width="1200" height="78" fill="#123b56"/>
+  <text x="40" y="50" class="font title">Conditional DiT：从图像 Patch 到条件 Transformer</text>
+
+  <text x="45" y="116" class="font head">1. Patchify</text>
+  <rect x="40" y="135" width="170" height="150" rx="12" fill="#d9eef0" stroke="#6d9baa" stroke-width="2"/>
+  <text x="125" y="160" text-anchor="middle" class="font body">噪声图像 xₜ</text>
+  <text x="125" y="183" text-anchor="middle" class="shape">[B, 3, 32, 32]</text>
+  <g stroke="#6d9baa" stroke-width="1">
+    <path d="M70 200H180M70 225H180M70 250H180M98 195V270M126 195V270M154 195V270"/>
+  </g>
+  <text x="125" y="278" text-anchor="middle" class="font small">4×4 patch 网格</text>
+  <path d="M220 210H280" stroke="#315b78" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="290" y="150" width="170" height="120" rx="12" fill="#fff0e6" stroke="#ee8d4f" stroke-width="2"/>
+  <text x="375" y="180" text-anchor="middle" class="font head">Patchify</text>
+  <text x="375" y="207" text-anchor="middle" class="font body">64 个 patch</text>
+  <text x="375" y="232" text-anchor="middle" class="shape">[B, 64, 48]</text>
+  <text x="375" y="254" text-anchor="middle" class="font small">48 = 4×4×3</text>
+  <path d="M470 210H530" stroke="#315b78" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="540" y="150" width="180" height="120" rx="12" fill="#e9e4f7" stroke="#8675b3" stroke-width="2"/>
+  <text x="630" y="180" text-anchor="middle" class="font head">Linear + 位置编码</text>
+  <text x="630" y="210" text-anchor="middle" class="shape">[B, 64, 128]</text>
+  <text x="630" y="242" text-anchor="middle" class="font small">token + pos_embed</text>
+
+  <text x="45" y="335" class="font head">2. 条件调制（每个 DiT Block）</text>
+  <rect x="45" y="360" width="150" height="70" rx="10" fill="#d9eef0" stroke="#6d9baa" stroke-width="2"/>
+  <text x="120" y="388" text-anchor="middle" class="font body">时间步 t</text><text x="120" y="411" text-anchor="middle" class="font small">TimeEmbedding</text>
+  <rect x="45" y="455" width="150" height="70" rx="10" fill="#d9eef0" stroke="#6d9baa" stroke-width="2"/>
+  <text x="120" y="483" text-anchor="middle" class="font body">类别 y</text><text x="120" y="506" text-anchor="middle" class="font small">ClassEmbedding</text>
+  <path d="M200 395H255M200 490H235V395H255" fill="none" stroke="#315b78" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="265" y="370" width="175" height="110" rx="12" fill="#fff0e6" stroke="#ee8d4f" stroke-width="2"/>
+  <text x="352" y="402" text-anchor="middle" class="font head">条件向量 c</text><text x="352" y="430" text-anchor="middle" class="font body">t_emb + y_emb</text><text x="352" y="456" text-anchor="middle" class="shape">[B, 128]</text>
+  <path d="M445 425H505" stroke="#315b78" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="515" y="350" width="275" height="160" rx="14" fill="#e9e4f7" stroke="#8675b3" stroke-width="2"/>
+  <text x="652" y="382" text-anchor="middle" class="font head">adaLN-Zero</text>
+  <text x="652" y="414" text-anchor="middle" class="font body">c → shift, scale, gate</text>
+  <text x="652" y="445" text-anchor="middle" class="font body">(1 + scale) · LN(x) + shift</text>
+  <text x="652" y="476" text-anchor="middle" class="font body">x + gate · Attention / MLP</text>
+  <path d="M795 430H855" stroke="#315b78" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="865" y="350" width="285" height="160" rx="14" fill="#fff" stroke="#6d9baa" stroke-width="2"/>
+  <text x="1007" y="382" text-anchor="middle" class="font head">Transformer 全局建模</text>
+  <text x="1007" y="415" text-anchor="middle" class="font body">Self-Attention（4 heads）</text>
+  <text x="1007" y="445" text-anchor="middle" class="font body">MLP + 残差连接</text>
+  <text x="1007" y="478" text-anchor="middle" class="shape">[B, 64, 128]</text>
+
+  <text x="45" y="574" class="font head">3. Unpatchify</text>
+  <path d="M1150 530V600H330" fill="none" stroke="#315b78" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="170" y="600" width="220" height="65" rx="10" fill="#fff0e6" stroke="#ee8d4f" stroke-width="2"/>
+  <text x="280" y="628" text-anchor="middle" class="font body">Linear → 48 维 patch</text><text x="280" y="650" text-anchor="middle" class="shape">[B, 64, 48]</text>
+  <path d="M405 632H470" stroke="#315b78" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="480" y="600" width="240" height="65" rx="10" fill="#d9eef0" stroke="#6d9baa" stroke-width="2"/>
+  <text x="600" y="628" text-anchor="middle" class="font body">Unpatchify 还原空间布局</text><text x="600" y="650" text-anchor="middle" class="shape">预测噪声 ε̂ [B, 3, 32, 32]</text>
+  <text x="870" y="630" class="font small">Patch 化让 Transformer 获得图像的全局 token 上下文；</text>
+  <text x="870" y="653" class="font small">条件向量只调制隐藏特征，不改变 token 数量。</text>
+</svg>

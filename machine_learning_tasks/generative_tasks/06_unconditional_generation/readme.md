@@ -73,6 +73,10 @@ $q(x_T | x_0) \approx \mathcal{N}(0, \mathbf{I})$
 | 反向条件后验均值 | $\tilde{\mu}_t = \frac{\sqrt{\alpha_t}(1-\bar{\alpha}_{t-1})}{1-\bar{\alpha}_t} x_t + \frac{\sqrt{\bar{\alpha}_{t-1}}\beta_t}{1-\bar{\alpha}_t} x_0$ |
 | 反向条件后验方差 | $\tilde{\beta}_t = \frac{1-\bar{\alpha}_{t-1}}{1-\bar{\alpha}_t} \beta_t$ |
 
+![DDPM 前向加噪与反向去噪过程](./assets/ddpm_forward_reverse.svg)
+
+图中上半部分展示固定的前向过程 $q$ 如何逐步加入高斯噪声，下半部分展示模型学习的反向过程 $p_\theta$ 如何从 $x_T$ 逐步恢复 $\hat{x}_0$。
+
 ---
 
 ### 核心公式

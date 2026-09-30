@@ -4,6 +4,10 @@
 
 本架构严格遵照标准 PyTorch 模块化工程进行设计，基于 **Mamba（Selective State Space Model, S6）** 实现端到端 Token 序列（最大长度为 32）的 8 分类意图识别任务。模型通过纯手写选择性扫描（Selective Scan）机制，实现 $O(N)$ 线性时间复杂度的长上下文依赖提取，解决传统 Transformer 在长序列下的二次计算开销与传统 SSM 无法根据输入选择性过滤信息的缺陷。
 
+### 选择性扫描如何更新记忆
+
+![Mamba 选择性扫描：输入驱动的状态递推](assets/mamba_selective_scan.svg)
+
 ```
 [Input Tensor: B x L] (Token IDs)
          │

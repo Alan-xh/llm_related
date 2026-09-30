@@ -4,6 +4,8 @@
 
 Mask R-CNN 是在 Faster R-CNN 基础上的扩展，增加了一个用于预测像素级 Mask 的全卷积分支。
 
+![Mask R-CNN 多分支预测：分类、定位与实例掩码](assets/mask_rcnn_heads.svg)
+
 ```
                        [ Input Image: B x 3 x H x W ]
                                      │

@@ -4,6 +4,12 @@
 
 Faster R-CNN 是一种典型的两阶段 (Two-Stage) 目标检测神经网络，整体数据处理流程如下所示：
 
+![Faster R-CNN 两阶段检测流程](assets/faster_rcnn_two_stage.svg)
+
+### 候选框重叠与筛选
+
+![IoU 与 NMS：从重复候选框中保留最高分框](assets/iou_nms.svg)
+
 ```text
   [Input Image] : [B, 3, 256, 256]
         │

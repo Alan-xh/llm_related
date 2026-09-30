@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">Behavior cloning supervised policy learning</title>
+  <desc id="desc">State observations pass through an MLP policy network to action logits. Expert action labels supervise the logits through cross entropy during training, while inference uses softmax and argmax without expert labels.</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0v6l9-3z" fill="#475569"/></marker><style>
+    .title{font:700 27px system-ui,'Noto Sans CJK SC',sans-serif;fill:#102a43}.head{font:700 17px system-ui,'Noto Sans CJK SC',sans-serif;fill:#102a43}.txt{font:500 14px system-ui,'Noto Sans CJK SC',sans-serif;fill:#475569}.tag{font:600 13px system-ui,'Noto Sans CJK SC',sans-serif;fill:#334155}
+  </style></defs>
+  <rect width="1200" height="500" rx="16" fill="#f6f9fc"/><text x="48" y="52" class="title">行为克隆：把专家示范转成监督学习样本 (s, a*)</text>
+  <rect x="45" y="165" width="160" height="100" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/><text x="125" y="202" text-anchor="middle" class="head">状态 s</text><text x="125" y="232" text-anchor="middle" class="txt">[B, 10]</text>
+  <path d="M205 215H255" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="265" y="165" width="220" height="100" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/><text x="375" y="202" text-anchor="middle" class="head">Policy MLP</text><text x="375" y="232" text-anchor="middle" class="txt">Linear · LN · GELU · Dropout</text>
+  <path d="M485 215H535" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="545" y="165" width="150" height="100" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2"/><text x="620" y="202" text-anchor="middle" class="head">Logits z</text><text x="620" y="232" text-anchor="middle" class="txt">[B, 4]</text>
+  <path d="M695 215H745" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="755" y="165" width="170" height="100" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="840" y="202" text-anchor="middle" class="head">Softmax</text><text x="840" y="232" text-anchor="middle" class="txt">πθ(a|s)</text>
+  <path d="M925 215H975" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/><rect x="985" y="165" width="170" height="100" rx="12" fill="#ffe4e6" stroke="#e11d48" stroke-width="2"/><text x="1070" y="202" text-anchor="middle" class="head">argmax</text><text x="1070" y="232" text-anchor="middle" class="txt">预测动作</text>
+  <rect x="180" y="345" width="210" height="75" rx="12" fill="#fff" stroke="#0f766e" stroke-width="2"/><text x="285" y="377" text-anchor="middle" class="head">专家动作 a*</text><text x="285" y="400" text-anchor="middle" class="txt">[B] 标签</text>
+  <rect x="545" y="345" width="245" height="75" rx="12" fill="#ccfbf1" stroke="#0f766e" stroke-width="2"/><text x="667" y="377" text-anchor="middle" class="head">CrossEntropy</text><text x="667" y="400" text-anchor="middle" class="txt">L = −log πθ(a*|s)</text>
+  <path d="M620 265V335" stroke="#0f766e" stroke-width="2.5" marker-end="url(#arrow)"/><path d="M390 382H535" stroke="#0f766e" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <path d="M545 405H420V285H375V275" fill="none" stroke="#0f766e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/><text x="450" y="300" class="tag">反向传播更新 θ</text>
+  <text x="950" y="385" class="txt">训练：专家标签参与损失</text><text x="950" y="409" class="txt">推理：只需状态与策略网络</text>
+</svg>

@@ -4,6 +4,8 @@
 
 本模型实现了一个**通用多层感知机 (MLP)**，用于处理表格或多维向量数据的连续值回归任务。整体架构由模块化的 `MLPBlock` 堆叠而成，并在最终输出层使用线性投影。
 
+![MLP 回归：从特征向量到连续值预测](assets/mlp_regression_flow.svg)
+
 ### 数据流拓扑图 (Data Flow Diagram)
 
 ```text

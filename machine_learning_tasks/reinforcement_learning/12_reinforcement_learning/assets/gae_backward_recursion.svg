@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 430" role="img" aria-labelledby="title desc">
+  <title id="title">GAE backward recursive advantage estimate</title>
+  <desc id="desc">At each timestep, compute the temporal difference residual, then accumulate later residuals backward with gamma lambda. A done mask stops bootstrapping and recursion across episode boundaries.</desc>
+  <defs><marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0v6l9-3z" fill="#475569"/></marker><style>
+    .title{font:700 27px system-ui,'Noto Sans CJK SC',sans-serif;fill:#102a43}.head{font:700 17px system-ui,'Noto Sans CJK SC',sans-serif;fill:#102a43}.txt{font:500 14px system-ui,'Noto Sans CJK SC',sans-serif;fill:#475569}.formula{font:600 16px system-ui,'Noto Sans CJK SC',sans-serif;fill:#334155}
+  </style></defs>
+  <rect width="1200" height="430" rx="16" fill="#f6f9fc"/><text x="48" y="52" class="title">GAE：先算每一步 TD 残差，再从后向前折扣累加</text>
+  <text x="600" y="98" text-anchor="middle" class="formula">δₜ = rₜ + γ(1−dₜ)V(sₜ₊₁) − V(sₜ)　　　Aₜ = δₜ + γλ(1−dₜ)Aₜ₊₁</text>
+  <g>
+    <rect x="100" y="165" width="210" height="100" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/><text x="205" y="199" text-anchor="middle" class="head">t</text><text x="205" y="229" text-anchor="middle" class="txt">rₜ, Vₜ → δₜ → Aₜ</text>
+    <rect x="495" y="165" width="210" height="100" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="600" y="199" text-anchor="middle" class="head">t+1</text><text x="600" y="229" text-anchor="middle" class="txt">rₜ₊₁, Vₜ₊₁ → δₜ₊₁ → Aₜ₊₁</text>
+    <rect x="890" y="165" width="210" height="100" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2"/><text x="995" y="199" text-anchor="middle" class="head">t+2</text><text x="995" y="229" text-anchor="middle" class="txt">δₜ₊₂ → Aₜ₊₂</text>
+    <path d="M880 215H715" stroke="#475569" stroke-width="2.5" marker-end="url(#arr)"/><text x="797" y="198" text-anchor="middle" class="txt">γλ(1−dₜ₊₁)</text>
+    <path d="M485 215H320" stroke="#475569" stroke-width="2.5" marker-end="url(#arr)"/><text x="402" y="198" text-anchor="middle" class="txt">γλ(1−dₜ)</text>
+  </g>
+  <rect x="335" y="305" width="530" height="70" rx="10" fill="#fff" stroke="#cbd5e1"/><text x="600" y="334" text-anchor="middle" class="head">终止掩码 dₜ = 1</text><text x="600" y="357" text-anchor="middle" class="txt">切断下一状态 bootstrap 与跨 episode 的优势递归</text>
+  <path d="M205 265V296H335" fill="none" stroke="#e11d48" stroke-width="2" stroke-dasharray="6 5"/><text x="160" y="321" class="txt" fill="#be123c">done</text>
+  <text x="600" y="405" text-anchor="middle" class="txt">实际实现从 rollout 末尾逆序遍历；目标回报 Rₜ = Aₜ + V(sₜ)。</text>
+</svg>

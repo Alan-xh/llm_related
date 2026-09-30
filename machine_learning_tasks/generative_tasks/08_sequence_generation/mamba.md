@@ -4,6 +4,8 @@
 
 本模型实现了轻量化的选择性状态空间语言模型（Mamba Language Model）。数据流经以下核心阶段：
 
+![Mamba 选择性状态空间扫描](assets/mamba_ssm_scan.svg)
+
 1. **Embedding 层**：将输入的离散 Token ID 映射为连续向量表示。
 2. **Mamba 堆叠层（SimpleMambaBlock）**：
 * 线性投影与门控分流 (`in_proj`)

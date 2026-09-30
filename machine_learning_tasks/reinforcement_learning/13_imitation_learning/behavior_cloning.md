@@ -4,6 +4,8 @@
 
 行为克隆 (Behavior Cloning) 管道由**环境状态输入**、**深度多层感知机策略网络 (Policy Network)**、**策略头 (Policy Head)** 以及**最大似然交叉熵损失驱动模块**四大核心部分构成。
 
+![行为克隆从专家示范到策略预测的监督学习路径](assets/behavior_cloning_supervision.svg)
+
 数据流与处理控制逻辑如下：
 
 ```

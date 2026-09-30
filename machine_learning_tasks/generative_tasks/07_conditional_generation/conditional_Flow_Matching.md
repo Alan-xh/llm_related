@@ -20,6 +20,8 @@ Flow Matching 是一类基于连续时间生成模型（Continuous Normalizing F
 
 ```
 
+![条件 Flow Matching 的向量场与 Euler ODE 采样流程](assets/conditional_generation_flow.svg)
+
 * **训练阶段**：直接通过数据点 $x_1$ 和高斯噪声点 $x_0$ 构造线性概率路径 $x_t = (1-t)x_0 + t x_1$。模型 $v_\theta(x_t, t, y)$ 以均方误差（MSE）回归目标方向向量场 $u_t = x_1 - x_0$。无需模拟完整的 ODE 求解路径即可实现高效并行训练。
 * **采样阶段**：在初始 $t=0$ 时采样高斯噪声 $x_0$，使用 Euler 步进法，沿着预测的向量场步进 $50$ 步推演至 $t=1$，获得高保真图像。
 

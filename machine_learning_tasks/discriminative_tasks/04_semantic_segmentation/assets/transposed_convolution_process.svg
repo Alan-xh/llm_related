@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="920" viewBox="0 0 1600 920" role="img" aria-labelledby="title desc">
+  <title id="title">反卷积（转置卷积）计算过程与维度变化</title>
+  <desc id="desc">展示转置卷积如何将输入特征图通过局部乘加和步幅扩展为空间尺寸更大的输出特征图，以及 U-Net 中的维度公式。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#315b78"/>
+    </marker>
+    <linearGradient id="header" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#123b56"/>
+      <stop offset="1" stop-color="#1e6e78"/>
+    </linearGradient>
+    <style>
+      .sans { font-family: "Noto Sans CJK SC", "Microsoft YaHei", "PingFang SC", Arial, sans-serif; }
+      .mono { font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace; }
+      .title { font-size: 34px; font-weight: 700; fill: #ffffff; }
+      .section { font-size: 24px; font-weight: 700; fill: #123b56; }
+      .label { font-size: 18px; font-weight: 700; fill: #123b56; }
+      .body { font-size: 17px; fill: #314b5c; }
+      .small { font-size: 15px; fill: #526b78; }
+      .formula { font-size: 22px; fill: #123b56; }
+      .dim { font-size: 21px; font-weight: 700; fill: #123b56; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="920" fill="#f7fafb"/>
+  <rect x="0" y="0" width="1600" height="92" fill="url(#header)"/>
+  <text x="64" y="58" class="sans title">反卷积（转置卷积）：上采样计算与维度变化</text>
+  <text x="1518" y="57" text-anchor="end" class="sans" font-size="16" fill="#d8edf0">U-Net / ConvTranspose2d</text>
+
+  <rect x="44" y="120" width="1512" height="398" rx="14" fill="#ffffff" stroke="#d7e4e9" stroke-width="2"/>
+  <text x="76" y="163" class="sans section">1. 转置卷积的局部乘加：一个输入值展开为一个局部块</text>
+  <text x="76" y="194" class="sans body">以 stride=2、2×2 卷积核为例，每个输入元素乘以卷积核后写入输出对应区域；重叠位置需要累加。</text>
+
+  <!-- Input -->
+  <text x="130" y="245" class="sans label">输入特征图 X（2×2）</text>
+  <g transform="translate(112 268)">
+    <rect width="168" height="168" rx="7" fill="#e7f2f5" stroke="#6d9baa" stroke-width="2"/>
+    <g fill="#315b78" stroke="#ffffff" stroke-width="2" class="sans" font-size="25" text-anchor="middle" dominant-baseline="middle">
+      <rect x="0" y="0" width="84" height="84"/><rect x="84" y="0" width="84" height="84"/>
+      <rect x="0" y="84" width="84" height="84"/><rect x="84" y="84" width="84" height="84"/>
+      <text x="42" y="42" fill="#ffffff">1</text><text x="126" y="42" fill="#ffffff">2</text>
+      <text x="42" y="126" fill="#ffffff">0</text><text x="126" y="126" fill="#ffffff">1</text>
+    </g>
+  </g>
+  <text x="196" y="466" text-anchor="middle" class="sans small">每个元素都参与一次局部映射</text>
+
+  <!-- Kernel -->
+  <path d="M304 352 L382 352" stroke="#315b78" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="343" y="331" text-anchor="middle" class="sans small">乘以 K</text>
+  <text x="425" y="245" class="sans label">转置卷积核 K（2×2）</text>
+  <g transform="translate(410 268)">
+    <rect width="168" height="168" rx="7" fill="#fff0e6" stroke="#ee8d4f" stroke-width="3"/>
+    <g fill="#d9783d" stroke="#ffffff" stroke-width="2" class="sans" font-size="24" text-anchor="middle" dominant-baseline="middle">
+      <rect x="0" y="0" width="84" height="84"/><rect x="84" y="0" width="84" height="84"/>
+      <rect x="0" y="84" width="84" height="84"/><rect x="84" y="84" width="84" height="84"/>
+      <text x="42" y="42" fill="#ffffff">1</text><text x="126" y="42" fill="#ffffff">0</text>
+      <text x="42" y="126" fill="#ffffff">0</text><text x="126" y="126" fill="#ffffff">1</text>
+    </g>
+  </g>
+  <text x="494" y="466" text-anchor="middle" class="sans small">每个输入值与 K 相乘，得到 2×2 局部块</text>
+
+  <!-- Calculation -->
+  <path d="M602 352 L680 352" stroke="#315b78" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="641" y="331" text-anchor="middle" class="sans small">按 stride=2 放置</text>
+  <rect x="690" y="268" width="382" height="168" rx="8" fill="#f2f7f8" stroke="#b8d0d7" stroke-width="2"/>
+  <text x="718" y="301" class="sans label">局部乘加示例</text>
+  <text x="718" y="340" class="mono formula">x₀₀K = 1 · [[1,0],[0,1]]</text>
+  <text x="718" y="375" class="mono formula">x₀₁K = 2 · [[1,0],[0,1]]</text>
+  <text x="718" y="410" class="mono formula">y = Σ₍ᵢ,ⱼ₎ xᵢⱼ · K（按位置累加）</text>
+
+  <!-- Output -->
+  <path d="M1096 352 L1174 352" stroke="#315b78" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="1135" y="331" text-anchor="middle" class="sans small">重叠位置求和</text>
+  <text x="1230" y="245" class="sans label">输出特征图 Y（4×4）</text>
+  <g transform="translate(1190 268)">
+    <rect width="224" height="224" rx="7" fill="#dff0ed" stroke="#4d988d" stroke-width="2"/>
+    <g fill="#3c8d82" stroke="#ffffff" stroke-width="2" class="sans" font-size="18" text-anchor="middle" dominant-baseline="middle">
+      <rect x="0" y="0" width="56" height="56"/><rect x="56" y="0" width="56" height="56"/><rect x="112" y="0" width="56" height="56"/><rect x="168" y="0" width="56" height="56"/>
+      <rect x="0" y="56" width="56" height="56"/><rect x="56" y="56" width="56" height="56"/><rect x="112" y="56" width="56" height="56"/><rect x="168" y="56" width="56" height="56"/>
+      <rect x="0" y="112" width="56" height="56"/><rect x="56" y="112" width="56" height="56"/><rect x="112" y="112" width="56" height="56"/><rect x="168" y="112" width="56" height="56"/>
+      <rect x="0" y="168" width="56" height="56"/><rect x="56" y="168" width="56" height="56"/><rect x="112" y="168" width="56" height="56"/><rect x="168" y="168" width="56" height="56"/>
+      <text x="28" y="28" fill="#ffffff">1</text><text x="84" y="28" fill="#ffffff">0</text><text x="140" y="28" fill="#ffffff">2</text><text x="196" y="28" fill="#ffffff">0</text>
+      <text x="28" y="84" fill="#ffffff">0</text><text x="84" y="84" fill="#ffffff">2</text><text x="140" y="84" fill="#ffffff">0</text><text x="196" y="84" fill="#ffffff">2</text>
+      <text x="28" y="140" fill="#ffffff">0</text><text x="84" y="140" fill="#ffffff">0</text><text x="140" y="140" fill="#ffffff">1</text><text x="196" y="140" fill="#ffffff">0</text>
+      <text x="28" y="196" fill="#ffffff">0</text><text x="84" y="196" fill="#ffffff">0</text><text x="140" y="196" fill="#ffffff">0</text><text x="196" y="196" fill="#ffffff">1</text>
+    </g>
+  </g>
+  <text x="1302" y="508" text-anchor="middle" class="sans small">K=2、S=2、P=0：空间尺寸 2×2 → 4×4</text>
+
+  <rect x="44" y="546" width="1512" height="304" rx="14" fill="#ffffff" stroke="#d7e4e9" stroke-width="2"/>
+  <text x="76" y="589" class="sans section">2. U-Net 解码器中的维度变化</text>
+  <text x="76" y="620" class="sans body">转置卷积常被称作“反卷积”，但它不是普通卷积的严格逆运算；U-Net 用它来学习上采样。</text>
+
+  <rect x="76" y="660" width="294" height="104" rx="10" fill="#e7f2f5" stroke="#8eb4be" stroke-width="2"/>
+  <text x="223" y="696" text-anchor="middle" class="sans label">瓶颈特征</text>
+  <text x="223" y="735" text-anchor="middle" class="mono dim">[8, 128, 32, 32]</text>
+
+  <path d="M382 712 L444 712" stroke="#315b78" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="455" y="638" width="332" height="148" rx="10" fill="#fff0e6" stroke="#e6a06f" stroke-width="2"/>
+  <text x="621" y="672" text-anchor="middle" class="sans label">ConvTranspose2d</text>
+  <text x="621" y="706" text-anchor="middle" class="mono body">K=2, S=2, P=0</text>
+  <text x="621" y="742" text-anchor="middle" class="sans small">Cᵢₙ=128 → Cₒᵤₜ=64</text>
+  <text x="621" y="768" text-anchor="middle" class="sans small">H、W 翻倍，通道数减半</text>
+
+  <path d="M799 712 L861 712" stroke="#315b78" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="872" y="660" width="294" height="104" rx="10" fill="#dff0ed" stroke="#83b9af" stroke-width="2"/>
+  <text x="1019" y="696" text-anchor="middle" class="sans label">上采样输出</text>
+  <text x="1019" y="735" text-anchor="middle" class="mono dim">[8, 64, 64, 64]</text>
+
+  <path d="M1178 712 L1240 712" stroke="#315b78" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="1251" y="638" width="262" height="148" rx="10" fill="#f2f7f8" stroke="#b8d0d7" stroke-width="2"/>
+  <text x="1382" y="672" text-anchor="middle" class="sans label">Concat Skip 2</text>
+  <text x="1382" y="708" text-anchor="middle" class="sans small">与编码器特征拼接</text>
+  <text x="1382" y="750" text-anchor="middle" class="mono dim">[8, 128, 64, 64]</text>
+
+  <rect x="76" y="810" width="1437" height="58" rx="10" fill="#123b56"/>
+  <text x="106" y="846" class="sans" font-size="19" fill="#cfe8eb">输出尺寸公式</text>
+  <text x="330" y="847" class="mono" font-size="24" fill="#ffffff">Hₒᵤₜ = (Hᵢₙ − 1)S − 2P + K + output_padding</text>
+  <text x="1120" y="846" class="sans" font-size="16" fill="#a9d0d4">示例：(32−1)×2+2=64</text>
+</svg>

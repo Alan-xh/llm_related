@@ -45,6 +45,8 @@ Conditional DiT (Conditional Diffusion Transformer) 抛弃了传统扩散模型�
 
 ```
 
+![Conditional DiT 的 Patchify、条件融合与 adaLN 调制](assets/dit_patchify_conditioning.svg)
+
 ---
 
 ## 2. 张量 Shape 流动追踪 (Tensor Flow Table)

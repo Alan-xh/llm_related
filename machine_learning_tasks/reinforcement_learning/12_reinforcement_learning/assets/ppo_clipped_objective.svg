@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">PPO clipped surrogate objective</title>
+  <desc id="desc">Two panels show the minimum of the unclipped and clipped surrogate for positive and negative advantages. Clipping creates a plateau where a policy change would otherwise improve the objective too much.</desc>
+  <defs><style>
+    .title{font:700 27px system-ui,'Noto Sans CJK SC',sans-serif;fill:#102a43}.head{font:700 18px system-ui,'Noto Sans CJK SC',sans-serif;fill:#102a43}.label{font:500 14px system-ui,'Noto Sans CJK SC',sans-serif;fill:#475569}.axis{stroke:#64748b;stroke-width:1.5}.clip{stroke:#d97706;stroke-width:1.5;stroke-dasharray:5 5}.raw{fill:none;stroke:#94a3b8;stroke-width:2.5;stroke-dasharray:7 5}.obj{fill:none;stroke:#2563eb;stroke-width:4}
+  </style></defs>
+  <rect width="1200" height="560" rx="16" fill="#f6f9fc"/><text x="48" y="50" class="title">PPO 裁剪目标：限制有利方向上的过大策略变化</text>
+  <text x="600" y="83" text-anchor="middle" class="label">横轴是概率比率 rₜ(θ)；虚线为未裁剪项 rₜAₜ，蓝线为 min(rₜAₜ, clip(rₜ)Aₜ)</text>
+  <g transform="translate(70,120)">
+    <rect width="510" height="370" rx="12" fill="#fff" stroke="#cbd5e1"/><text x="255" y="36" text-anchor="middle" class="head">Aₜ &gt; 0：鼓励提高该动作概率</text>
+    <path d="M80 285H465M110 320V82" class="axis"/><path d="M185 82V320M390 82V320" class="clip"/>
+    <path d="M115 280L455 105" class="raw"/><path d="M115 280L390 138H455" class="obj"/>
+    <text x="185" y="344" text-anchor="middle" class="label">1−ε</text><text x="390" y="344" text-anchor="middle" class="label">1+ε</text><text x="480" y="292" class="label">rₜ</text>
+    <text x="390" y="119" text-anchor="middle" class="label" fill="#2563eb">平台：不再增加目标</text><text x="105" y="65" class="label">目标值</text>
+    <text x="255" y="386" text-anchor="middle" class="label">比率超过上界后，正优势收益被截平</text>
+  </g>
+  <g transform="translate(620,120)">
+    <rect width="510" height="370" rx="12" fill="#fff" stroke="#cbd5e1"/><text x="255" y="36" text-anchor="middle" class="head">Aₜ &lt; 0：鼓励降低该动作概率</text>
+    <path d="M80 285H465M110 320V82" class="axis"/><path d="M185 82V320M390 82V320" class="clip"/>
+    <path d="M115 105L455 280" class="raw"/><path d="M115 138H185L455 280" class="obj"/>
+    <text x="185" y="344" text-anchor="middle" class="label">1−ε</text><text x="390" y="344" text-anchor="middle" class="label">1+ε</text><text x="480" y="292" class="label">rₜ</text>
+    <text x="185" y="119" text-anchor="middle" class="label" fill="#2563eb">平台：不再增加目标</text><text x="105" y="65" class="label">目标值</text>
+    <text x="255" y="386" text-anchor="middle" class="label">比率低于下界后，负优势收益被截平</text>
+  </g>
+  <path d="M255 510H945" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 5"/><text x="600" y="540" text-anchor="middle" class="label">ε 常取 0.2；裁剪不强制 rₜ 落在区间内，而是限制目标对越界变化的奖励</text>
+</svg>

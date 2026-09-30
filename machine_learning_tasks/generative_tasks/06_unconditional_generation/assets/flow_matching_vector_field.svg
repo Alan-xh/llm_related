@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">Flow Matching vector field and Euler sampling</title>
+  <desc id="desc">A vector field transports samples along a continuous path from a Gaussian prior to the data distribution. Euler steps follow the learned velocity.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f0fdfa"/><stop offset="1" stop-color="#eff6ff"/></linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker>
+    <marker id="darkArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#0f766e"/></marker>
+    <style>.title{font:700 26px system-ui,sans-serif;fill:#0f172a}.label{font:700 16px system-ui,sans-serif;fill:#0f172a}.small{font:500 14px system-ui,sans-serif;fill:#475569}.eq{font:600 17px ui-monospace,monospace;fill:#1d4ed8}</style>
+  </defs>
+  <rect width="1200" height="620" rx="18" fill="url(#bg)"/>
+  <text x="44" y="48" class="title">Flow Matching: learn a velocity field, then integrate it</text>
+  <text x="44" y="75" class="small">Training teaches vθ(xₜ,t) to point from a prior sample x₀ toward a data sample x₁.</text>
+  <rect x="42" y="104" width="790" height="458" rx="16" fill="#fff" stroke="#bae6fd" stroke-width="2"/>
+  <g transform="translate(78,140)">
+    <path d="M0 360 H700 M0 360 V0" stroke="#94a3b8" stroke-width="2"/><text x="694" y="389" class="small">feature dimension 1</text><text x="-6" y="-10" class="small">feature dim 2</text>
+    <g stroke="#93c5fd" stroke-width="2" marker-end="url(#arrow)" opacity=".9">
+      <path d="M74 270 l52 -18"/><path d="M140 320 l50 -20"/><path d="M180 240 l56 -18"/><path d="M240 300 l56 -14"/><path d="M285 204 l52 -11"/><path d="M350 265 l54 -7"/><path d="M405 170 l50 5"/><path d="M470 220 l48 10"/><path d="M535 130 l45 17"/><path d="M590 174 l43 22"/>
+      <path d="M85 160 l45 21"/><path d="M175 120 l46 18"/><path d="M270 90 l43 17"/><path d="M375 90 l43 20"/><path d="M485 76 l42 21"/>
+    </g>
+    <path d="M72 286 C220 254 365 220 624 160" fill="none" stroke="#2563eb" stroke-width="4" stroke-dasharray="9 7" marker-end="url(#arrow)"/>
+    <g fill="#2563eb" stroke="#fff" stroke-width="3"><circle cx="76" cy="285" r="9"/><circle cx="194" cy="258" r="9"/><circle cx="316" cy="229" r="9"/><circle cx="438" cy="202" r="9"/><circle cx="550" cy="176" r="9"/></g>
+    <g fill="#f97316" opacity=".9"><circle cx="602" cy="140" r="8"/><circle cx="632" cy="159" r="7"/><circle cx="650" cy="128" r="9"/><circle cx="668" cy="176" r="7"/><circle cx="618" cy="192" r="7"/></g>
+    <text x="42" y="322" class="label">x₀ ~ N(0,I)</text><text x="570" y="218" class="label">x₁ ~ p_data</text>
+    <text x="264" y="278" class="eq">xₜ = (1−t)x₀ + t x₁</text>
+    <text x="274" y="332" class="small">blue dots: Euler states</text><text x="484" y="350" class="small">orange: target samples</text>
+  </g>
+  <rect x="862" y="104" width="296" height="458" rx="16" fill="#fff" stroke="#99f6e4" stroke-width="2"/>
+  <text x="888" y="145" class="label">Training target</text><text x="888" y="178" class="eq">uₜ = x₁ − x₀</text><text x="888" y="208" class="small">Regress the constant direction</text><text x="888" y="228" class="small">with an MSE objective:</text>
+  <text x="888" y="272" class="eq">‖vθ(xₜ,t) − uₜ‖²</text>
+  <line x1="888" y1="300" x2="1132" y2="300" stroke="#cbd5e1"/>
+  <text x="888" y="340" class="label">Sampling (ODE solve)</text><text x="888" y="374" class="eq">x ← x + Δt · vθ(x,t)</text><text x="888" y="405" class="small">Euler follows the arrows in</text><text x="888" y="425" class="small">small, deterministic steps.</text>
+  <rect x="888" y="455" width="236" height="70" rx="10" fill="#ecfeff" stroke="#5eead4"/><text x="1006" y="483" text-anchor="middle" class="label">No Markov noise</text><text x="1006" y="507" text-anchor="middle" class="small">continuous t ∈ [0,1]</text>
+</svg>

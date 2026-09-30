@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">Vanilla GAN minimax training flow</title>
+  <desc id="desc">The generator turns random noise into fake samples. The discriminator scores real and fake samples, and the two networks receive opposing objectives.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f7f7ff"/><stop offset="1" stop-color="#eefcf9"/></linearGradient>
+    <linearGradient id="gen" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7c3aed"/><stop offset="1" stop-color="#5b21b6"/></linearGradient>
+    <linearGradient id="disc" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#059669"/><stop offset="1" stop-color="#047857"/></linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#475569"/></marker>
+    <marker id="purple" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#7c3aed"/></marker>
+    <marker id="green" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#059669"/></marker>
+    <style>.title{font:700 26px system-ui,sans-serif;fill:#111827}.label{font:700 16px system-ui,sans-serif;fill:#111827}.small{font:500 14px system-ui,sans-serif;fill:#4b5563}.loss{font:600 15px ui-monospace,monospace}</style>
+  </defs>
+  <rect width="1200" height="560" rx="18" fill="url(#bg)"/>
+  <text x="48" y="48" class="title">GAN: two networks learn through an adversarial loop</text>
+  <text x="48" y="75" class="small">D learns to separate real from fake; G learns to make D assign a high realness score to fake.</text>
+  <rect x="50" y="116" width="214" height="98" rx="14" fill="#ede9fe" stroke="#c4b5fd" stroke-width="2"/><text x="157" y="154" text-anchor="middle" class="label">Noise z</text><text x="157" y="180" text-anchor="middle" class="small">z ~ N(0, I)</text>
+  <path d="M264 165 H355" stroke="#7c3aed" stroke-width="3" marker-end="url(#purple)"/>
+  <rect x="355" y="116" width="196" height="98" rx="14" fill="url(#gen)"/><text x="453" y="157" text-anchor="middle" fill="#fff" class="label">Generator G</text><text x="453" y="183" text-anchor="middle" fill="#ede9fe" class="small">G(z) = fake sample</text>
+  <path d="M551 165 H678" stroke="#7c3aed" stroke-width="3" marker-end="url(#purple)"/><text x="615" y="147" text-anchor="middle" class="small">detach while training D</text>
+  <rect x="678" y="116" width="208" height="98" rx="14" fill="#f3f4f6" stroke="#9ca3af" stroke-width="2"/><text x="782" y="157" text-anchor="middle" class="label">Fake x̃</text><text x="782" y="183" text-anchor="middle" class="small">generated data</text>
+  <path d="M886 165 H1018" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="1018" y="116" width="136" height="196" rx="14" fill="url(#disc)"/><text x="1086" y="172" text-anchor="middle" fill="#fff" class="label">Discriminator D</text><text x="1086" y="204" text-anchor="middle" fill="#d1fae5" class="small">score ∈ R</text><text x="1086" y="231" text-anchor="middle" fill="#d1fae5" class="small">realness</text>
+  <rect x="50" y="330" width="214" height="98" rx="14" fill="#dbeafe" stroke="#93c5fd" stroke-width="2"/><text x="157" y="368" text-anchor="middle" class="label">Real data x</text><text x="157" y="394" text-anchor="middle" class="small">x ~ p_data</text>
+  <path d="M264 379 H1018" stroke="#059669" stroke-width="3" marker-end="url(#green)"/><text x="640" y="363" text-anchor="middle" class="small">D(x) should be high</text>
+  <rect x="350" y="462" width="350" height="62" rx="12" fill="#fff" stroke="#c4b5fd" stroke-width="2"/><text x="525" y="488" text-anchor="middle" class="loss" fill="#5b21b6">G: minimize −log D(G(z))</text><text x="525" y="510" text-anchor="middle" class="small">update θG to fool D</text>
+  <rect x="735" y="330" width="350" height="98" rx="12" fill="#fff" stroke="#a7f3d0" stroke-width="2"/><text x="910" y="363" text-anchor="middle" class="loss" fill="#047857">D: −log D(x) − log(1−D(G(z)))</text><text x="910" y="391" text-anchor="middle" class="small">update θD on real and fake batches</text>
+  <path d="M1018 260 C930 292 850 300 700 462" fill="none" stroke="#7c3aed" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#purple)"/>
+  <path d="M1086 312 V330" stroke="#059669" stroke-width="3" marker-end="url(#green)"/>
+</svg>

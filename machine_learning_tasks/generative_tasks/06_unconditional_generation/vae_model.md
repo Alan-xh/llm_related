@@ -30,6 +30,8 @@
 
 ```
 
+![VAE 重参数化技巧与编码解码流程](./assets/vae_reparameterization.svg)
+
 1. **编码阶段**: 图像展平为特征向量进入 Encoder，经过两个全连接层及 `SiLU` 激活函数映射为高斯隐分布参数：均值 $\mu$ 与对数方差 $\log(\sigma^2)$。
 2. **重参数化阶段**: 从标准高斯分布 $\mathcal{N}(0, I)$ 采样噪声 $\epsilon$，通过可导公式 $z = \mu + \sigma \odot \epsilon$ 生成隐变量 $z$，保证梯度顺畅回传。
 3. **解码阶段**: 隐变量 $z$ 通过 Decoder 网络升维重建，经过 `Tanh` 激活输出与原始归一化图像范围保持一致的重建特征。

@@ -4,6 +4,8 @@
 
 本模块手写实现了标准的 Transformer 编码器-解码器 (Seq2Seq) 架构。整体数据路径分为 Encoder 编码阶段和 Decoder 增量/并行解码阶段。
 
+![Transformer Seq2Seq 注意力路径与因果掩码](assets/transformer_seq2seq_attention.svg)
+
 ```
        Source Sequence [B, S_src]                      Target Sequence [B, S_tgt]
                    │                                               │

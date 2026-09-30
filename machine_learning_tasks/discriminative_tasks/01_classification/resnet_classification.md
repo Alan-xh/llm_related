@@ -4,6 +4,10 @@
 
 本架构严格遵照标准 PyTorch 模块化工程进行设计，基于 **ResNet18** 实现端到端 64x64 合成图像的 10 分类任务。模型核心通过残差跳跃连接（Residual Shortcut）实现跨层特征相加，克服深层网络梯度衰减。
 
+### 残差块中的信息流
+
+![ResNet 残差连接：残差分支与捷径分支相加](assets/resnet_residual_connection.svg)
+
 ```
 [Input Tensor: B x 3 x 64 x 64]
                │

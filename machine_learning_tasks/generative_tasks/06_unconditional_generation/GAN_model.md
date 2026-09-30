@@ -11,6 +11,8 @@ Vanilla GAN 基于零和博弈理论，由**生成器 (Generator, G)** 与 **判
 
 ```
 
+![Vanilla GAN 生成器与判别器的对抗训练流](./assets/gan_minimax_flow.svg)
+
 * **生成流 (Generator Flow)**:
 随机向量 $z \in \mathbb{R}^{100}$ 依次通过 4 层全连接块，特征通道按 `128 -> 256 -> 512 -> 1024` 逐步扩展，最后经线性层与 `Tanh` 映射展平成 shape 为 `[1, 64, 64]` 的伪造图像。
 * **判别流 (Discriminator Flow)**:

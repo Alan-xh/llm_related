@@ -22,6 +22,8 @@
 
 ```
 
+![条件 VAE 的潜变量采样与序列解码流程](assets/conditional_generation_flow.svg)
+
 ---
 
 ## 2. 张量 Shape 流动追踪 (Tensor Flow Table)

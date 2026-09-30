@@ -13,6 +13,8 @@
 
 ```
 
+![条件 DDPM 的加噪、条件 U-Net 与逐步去噪流程](assets/conditional_generation_flow.svg)
+
 * **前向过程 (`q_sample`)**：根据马尔可夫链性质，直接利用 closed-form 扩展公式计算 $t$ 时刻的含噪图像 $x_t$。
 * **条件融合机制**：正弦时间位置编码与类别嵌入做向量加和（`t_emb + c_emb`），将标量/离散控制量统一转换为连续向量 $cond \in \mathbb{R}^{128}$。
 * **特征注入**：在 U-Net 瓶颈之前将条件向量进行空间广播，并加和至特征图（`h2 + cond[:, :, None, None]`），使网络在去噪推断中显式感知条件约束。

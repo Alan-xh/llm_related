@@ -4,6 +4,8 @@
 
 SAM 1 采用了解耦的三阶段解构设计：**重型图像编码器 (Heavy Image Encoder)**、**轻量化提示编码器 (Prompt Encoder)** 以及 **双向交互掩码解码器 (Two-Way Mask Decoder)**。
 
+![SAM 提示驱动分割：图像与提示在注意力中交互](assets/sam_prompt_attention.svg)
+
 ```
                        ┌─────────────────────────┐
                        │   Input Image [B,3,H,W] │

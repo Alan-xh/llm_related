@@ -17,6 +17,8 @@
 
 ```
 
+![Flow Matching 向量场与 Euler 采样轨迹](./assets/flow_matching_vector_field.svg)
+
 * **训练阶段**：在 $[0, 1]$ 范围内随机采样时间 $t$，利用公式 $x_t = (1-t)x_0 + t x_1$ 生成插值点，训练网络 $v_\theta(x_t, t)$ 逼近常数切线向量 $x_1 - x_0$。
 * **推理阶段**：从噪声 $x_0$ 出发，以预测的 $v_\theta(x_t, t)$ 作为方向，采用欧拉显式积分步步推进（ODE 求解）还原生成图像。
 

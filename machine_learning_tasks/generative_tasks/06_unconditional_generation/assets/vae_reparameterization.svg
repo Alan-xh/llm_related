@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">VAE reparameterization trick</title>
+  <desc id="desc">The encoder predicts mean and log variance. Noise is sampled independently and combined with those parameters to form a differentiable latent sample.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fffaf5"/><stop offset="1" stop-color="#fff1e6"/></linearGradient>
+    <linearGradient id="enc" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f97316"/><stop offset="1" stop-color="#c2410c"/></linearGradient>
+    <linearGradient id="dec" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0ea5e9"/><stop offset="1" stop-color="#0369a1"/></linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#475569"/></marker>
+    <style>
+      .title{font:700 26px system-ui,sans-serif;fill:#1c1917}.label{font:700 16px system-ui,sans-serif;fill:#1c1917}.small{font:500 14px system-ui,sans-serif;fill:#57534e}.eq{font:700 20px ui-monospace,monospace;fill:#7c2d12}
+    </style>
+  </defs>
+  <rect width="1200" height="500" rx="18" fill="url(#bg)"/>
+  <text x="48" y="50" class="title">VAE: sampling a latent code without breaking backpropagation</text>
+  <g transform="translate(52,116)">
+    <rect width="150" height="100" rx="14" fill="url(#enc)"/><text x="75" y="42" text-anchor="middle" fill="#fff" class="label">Encoder</text><text x="75" y="68" text-anchor="middle" fill="#ffedd5" class="small">qφ(z | x)</text>
+    <path d="M168 50 H250" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+    <rect x="268" y="-8" width="170" height="58" rx="10" fill="#fff" stroke="#fdba74" stroke-width="2"/><text x="353" y="27" text-anchor="middle" class="label">μ(x)</text><text x="353" y="47" text-anchor="middle" class="small">mean</text>
+    <rect x="268" y="62" width="170" height="58" rx="10" fill="#fff" stroke="#fdba74" stroke-width="2"/><text x="353" y="97" text-anchor="middle" class="label">log σ²(x)</text><text x="353" y="117" text-anchor="middle" class="small">log variance</text>
+    <path d="M438 21 H514 V80 H562" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/><path d="M438 91 H514 V80" fill="none" stroke="#475569" stroke-width="3"/>
+    <rect x="562" y="30" width="188" height="100" rx="14" fill="#fff" stroke="#f59e0b" stroke-width="2"/><text x="656" y="59" text-anchor="middle" class="label">Reparameterize</text><text x="656" y="91" text-anchor="middle" class="eq">z = μ + σ ⊙ ε</text><text x="656" y="116" text-anchor="middle" class="small">σ = exp(½ log σ²)</text>
+    <path d="M656 30 V-28" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow)"/><rect x="572" y="-92" width="168" height="52" rx="10" fill="#ede9fe" stroke="#c4b5fd" stroke-width="2"/><text x="656" y="-60" text-anchor="middle" class="label">ε ~ N(0, I)</text><text x="656" y="-42" text-anchor="middle" class="small">fresh random noise</text>
+    <path d="M770 80 H850" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+    <rect x="868" y="30" width="160" height="100" rx="14" fill="url(#dec)"/><text x="948" y="72" text-anchor="middle" fill="#fff" class="label">Decoder</text><text x="948" y="98" text-anchor="middle" fill="#e0f2fe" class="small">pθ(x | z)</text>
+  </g>
+  <path d="M1000 216 V290 H127" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="65" y="318" width="1070" height="96" rx="14" fill="#fff" stroke="#fed7aa" stroke-width="2"/>
+  <text x="600" y="350" text-anchor="middle" class="label">Why this works</text>
+  <text x="600" y="378" text-anchor="middle" class="small">Randomness lives in ε, while μ and σ remain differentiable outputs of the encoder.</text>
+  <text x="600" y="400" text-anchor="middle" class="small">The decoder receives z and reconstructs x̂; training balances reconstruction error and KL(qφ(z|x) ‖ p(z)).</text>
+</svg>
